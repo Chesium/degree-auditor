@@ -1,0 +1,1040 @@
+# Edge cases — NUS EE AY24 JC degree auditor (implementation-blind)
+#
+# Schema per test case:
+#   id, description, why_this_matters, transcript, manual_allocation (optional),
+#   expected_pass, expected_failed_requirements, expected_failed_constraints,
+#   expected_warnings, source_refs
+#
+# Conventions:
+#   - assert_focus names the rule/area the expected_pass refers to (fixtures are
+#     intentionally minimal, so expected_pass is scoped to that area unless noted
+#     as a full-degree transcript).
+#   - All courses are 4 units unless stated. Units shown where they matter.
+#   - source_refs: CHK = L_AY24JC_Checklist PDF, SPC = ECE_Specialisations PDF,
+#     PRM = prompt.txt.
+#   - "page" refers to printed page markers in each PDF.
+
+version: 1
+cohort: nus_ee_ay24_jc
+
+cases:
+  - id: major_core_pass_basic
+    description: >
+      Student completed all fixed EE major core courses, one of EE2026/EE2028,
+      and 2 valid NUS TEs.
+    why_this_matters: >
+      Baseline happy path. If this fails, requirement satisfaction or unit
+      accounting is broken before any edge logic is reached.
+    assert_focus: MAJ_* and TE_MIN_2 (Major Programme block)
+    transcript:
+      courses:
+        - {course_code: EE1111A, units: 4, status: completed, source: NUS}
+        - {course_code: EE2111A, units: 4, status: completed, source: NUS}
+        - {course_code: EE2012, units: 4, status: completed, source: NUS}
+        - {course_code: EE2022, units: 4, status: completed, source: NUS}
+        - {course_code: EE2023, units: 4, status: completed, source: NUS}
+        - {course_code: EE2027, units: 4, status: completed, source: NUS}
+        - {course_code: PC2020, units: 4, status: completed, source: NUS}
+        - {course_code: EE2028, units: 4, status: completed, source: NUS}
+        - {course_code: EE4301, units: 4, status: completed, source: NUS}
+        - {course_code: EE4307, units: 4, status: completed, source: NUS}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings: []
+    source_refs:
+      - {document: CHK, page: 2, quote: "Major Programme: 40 units ... Two EE Technical Electives"}
+      - {document: PRM, line: 294, quote: "Include: EE1111A ... 2 EE Technical Electives"}
+
+  - id: tc_te_mutual_exclusion_fail
+    description: >
+      Single EE3xxxC course (EE3331C) manually allocated to BOTH TC and TE.
+    why_this_matters: >
+      Core source-aware constraint. The same course-units may not satisfy TC and
+      TE concurrently; this is the most fundamental separation rule for this cohort.
+    assert_focus: TC_NOT_TE / TE_MUTEX_TC
+    transcript:
+      courses:
+        - {course_code: EE3331C, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3331C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3331C, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: []
+    expected_failed_constraints: [TC_NOT_TE]
+    expected_warnings:
+      - "EE3331C allocated to both TC and TE; mutual exclusion violated"
+    source_refs:
+      - {document: CHK, page: 3, quote: "Courses used to fulfil T.C rule, cannot be used to fulfil T.E rule, and v.v."}
+      - {document: CHK, page: 1, quote: "Technical Course (T.C) is not Technical Elective (T.E)"}
+
+  - id: ee2026_ee2028_choice_tc_success
+    description: >
+      EE2028 used for the Major digital/microcontroller choice; EE2026 used for TC.
+    why_this_matters: >
+      The course NOT chosen for the Major must become TC-eligible. Validates the
+      choice group + conditional TC eligibility coupling.
+    assert_focus: MAJ_DIGITAL_CHOICE + TC_POOL (unused EE2026/EE2028)
+    transcript:
+      courses:
+        - {course_code: EE2028, units: 4, status: completed, source: NUS}
+        - {course_code: EE2026, units: 4, status: completed, source: NUS}
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3331C, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE2028, requirement_id: EE24JC_MAJOR_DIGITAL, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE2026, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3408C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3331C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings: []
+    source_refs:
+      - {document: CHK, page: 1, quote: "EE2026 or EE2028 (whichever not taken to fulfil EE Major)"}
+      - {document: PRM, line: 304, quote: "The course not used for the major may be eligible for TC."}
+
+  - id: ee2026_both_to_major_and_tc_fail
+    description: >
+      EE2026 allocated to BOTH the Major digital choice and TC, while EE2028 is absent.
+    why_this_matters: >
+      The unused-course condition is what makes EE2026/EE2028 TC-eligible. The same
+      instance cannot be both the major choice and the TC simultaneously.
+    assert_focus: MAJ_DIGITAL_CHOICE vs TC_POOL conditional
+    transcript:
+      courses:
+        - {course_code: EE2026, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE2026, requirement_id: EE24JC_MAJOR_DIGITAL, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE2026, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_constraints: [DOUBLE_USE_SINGLE_INSTANCE]
+    expected_failed_requirements: []
+    expected_warnings:
+      - "EE2026 cannot fulfil both Major digital choice and TC; TC eligibility requires the OTHER course"
+    source_refs:
+      - {document: CHK, page: 1, quote: "EE2026 or EE2028 (whichever not taken to fulfil EE Major)"}
+
+  - id: ee3031_not_te_fail
+    description: EE3031 manually allocated as a TE.
+    why_this_matters: >
+      EE3031 is explicitly UE-only for AY2021-AY2024 intake and must never count as TE.
+    assert_focus: TE_EXCLUDE_EE3031
+    transcript:
+      courses:
+        - {course_code: EE3031, units: 4, status: completed, source: NUS}
+        - {course_code: EE4301, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3031, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: [TE_MIN_2]
+    expected_failed_constraints: [TE_EXCLUDE_EE3031]
+    expected_warnings:
+      - "EE3031 can only fulfil UE for AY2021-AY2024 intake, not the TE rule"
+    source_refs:
+      - {document: CHK, page: 2, quote: "EE3031 can only fulfil UE for students of AY2021-AY2024 intake, not T.E rule"}
+
+  - id: ee3031_as_ue_pass
+    description: EE3031 allocated to residual UE only.
+    why_this_matters: >
+      Confirms the exclusion is TE-specific, not a blanket ban; EE3031 is valid UE.
+    assert_focus: UE_RESIDUAL acceptance of EE3031
+    transcript:
+      courses:
+        - {course_code: EE3031, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3031, requirement_id: EE24JC_UE, units: 4, allocation_role: residual_ue, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings: []
+    source_refs:
+      - {document: CHK, page: 2, quote: "EE3031 can only fulfil UE ... not T.E rule"}
+
+  - id: ee3033_not_te_fail
+    description: EE3033 manually allocated as a TE.
+    why_this_matters: >
+      EE3033 is explicitly excluded from the TE pool; it belongs to the TC pool only.
+    assert_focus: TE_EXCLUDE_EE3033
+    transcript:
+      courses:
+        - {course_code: EE3033, units: 4, status: completed, source: NUS, term: "AY2025-2026 S2"}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3033, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: [TE_MIN_2]
+    expected_failed_constraints: [TE_EXCLUDE_EE3033]
+    expected_warnings:
+      - "EE3033 is not a Technical Elective (TC pool only)"
+    source_refs:
+      - {document: CHK, page: 2, quote: "EE3xxx (does not include EE3033)"}
+
+  - id: ee3033_tc_before_effective_date_warn
+    description: EE3033 used as TC with term AY2025-2026 S1 (before wef Sem2 AY25/26).
+    why_this_matters: >
+      The effective date (wef Sem2 AY25/26) gates EE3033 TC-eligibility; an earlier
+      term must not silently pass. See ambiguity A-04.
+    assert_focus: TC_EFFECTIVE_DATE_EE3033
+    transcript:
+      courses:
+        - {course_code: EE3033, units: 4, status: completed, source: NUS, term: "AY2025-2026 S1"}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3033, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_constraints: [TC_EFFECTIVE_DATE_EE3033]
+    expected_failed_requirements: []
+    expected_warnings:
+      - "EE3033 is TC-eligible only from Semester 2 AY2025/26; attempt term precedes this"
+    source_refs:
+      - {document: CHK, page: 1, quote: "EE3033 Systems Integration and Design (wef sem2 AY25/26)"}
+
+  - id: ee3033_tc_on_effective_date_pass
+    description: EE3033 used as TC with term AY2025-2026 S2 (exactly the effective semester).
+    why_this_matters: Boundary test for the effective-date predicate (>= not >).
+    assert_focus: TC_EFFECTIVE_DATE_EE3033 boundary
+    transcript:
+      courses:
+        - {course_code: EE3033, units: 4, status: completed, source: NUS, term: "AY2025-2026 S2"}
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3331C, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3033, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3408C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3331C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings: []
+    source_refs:
+      - {document: CHK, page: 1, quote: "EE3033 ... (wef sem2 AY25/26)"}
+  - id: tc_only_3_courses_pass
+    description: Three valid TCs (EE3131C, EE3408C, EE3731C) plus two distinct TEs.
+    why_this_matters: >
+      TC minimum is 3 (count) and is additive to the 2-TE rule. Confirms the two
+      counters are independent and additive.
+    assert_focus: TC_MIN_3 + TE_MIN_2 (additive)
+    transcript:
+      courses:
+        - {course_code: EE3131C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3731C, units: 4, status: completed, source: NUS}
+        - {course_code: EE4101, units: 4, status: completed, source: NUS}
+        - {course_code: EE4302, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3131C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3408C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3731C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4101, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4302, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings: []
+    source_refs:
+      - {document: CHK, page: 1, quote: "AY24 intake (JC/non-poly): Read 3 T.C ... in addition to the EE Technical Elective rule (of 2 T.Es)"}
+
+  - id: tc_only_2_courses_fail
+    description: Only 2 TCs allocated; transcript has no third TC-eligible course.
+    why_this_matters: Off-by-one on the TC minimum (3) is a likely implementation bug.
+    assert_focus: TC_MIN_3
+    transcript:
+      courses:
+        - {course_code: EE3131C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3131C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3408C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: [TC_MIN_3]
+    expected_failed_constraints: []
+    expected_warnings:
+      - "Technical Courses: 2 / 3 completed"
+    source_refs:
+      - {document: CHK, page: 1, quote: "3 T.C is the minimum"}
+
+  - id: ae_core_overlap_with_tc_within_budget
+    description: >
+      EE3408C and EE3431C allocated to AE core; EE3408C also allocated to TC.
+      AE overlap = 4 units (<= 8).
+    why_this_matters: >
+      Validates that double-counting an extended-core course between AE and TC is
+      allowed while within the 8-unit overlap budget.
+    assert_focus: AE_CORE + SPEC_MAX_OVERLAP_8
+    transcript:
+      courses:
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3431C, units: 4, status: completed, source: NUS}
+        - {course_code: EE4407, units: 4, status: completed, source: NUS}
+        - {course_code: EE4415, units: 4, status: completed, source: NUS}
+        - {course_code: EE4409, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3408C, requirement_id: AE_CORE, units: 4, allocation_role: double_count, manual: true}
+        - {course_code: EE3408C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3431C, requirement_id: AE_CORE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4407, requirement_id: AE_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4415, requirement_id: AE_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4409, requirement_id: AE_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "AE overlap budget: 4 / 8 units used"
+    source_refs:
+      - {document: SPC, page: 5, quote: "Core (Compulsory) EE3408C ... EE3431C ... Choose at least 3 electives"}
+      - {document: SPC, page: 1, quote: "up to 8 Units (40%) ... may be double counted"}
+
+  - id: ae_core_tc_te_conflict
+    description: EE3408C allocated to AE core, TC, and TE simultaneously.
+    why_this_matters: >
+      Even when overlap budget allows AE+TC, the TC<->TE mutual exclusion must still
+      fire. Tests that mutual exclusion is checked independently of overlap budget.
+    assert_focus: TC_NOT_TE (independent of SPEC overlap)
+    transcript:
+      courses:
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3408C, requirement_id: AE_CORE, units: 4, allocation_role: double_count, manual: true}
+        - {course_code: EE3408C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3408C, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: []
+    expected_failed_constraints: [TC_NOT_TE]
+    expected_warnings:
+      - "EE3408C cannot be used for both TC and TE"
+    source_refs:
+      - {document: CHK, page: 3, quote: "Courses used to fulfil T.C rule, cannot be used to fulfil T.E rule, and v.v."}
+
+  - id: robotics_coursework_only_pass
+    description: 20 units (5 courses) from the Robotics basket, no capstone.
+    why_this_matters: Validates Robotics Path 2 (coursework-only) independent of capstone path.
+    assert_focus: RBT_PATH2_COURSEWORK
+    transcript:
+      courses:
+        - {course_code: EE3305, units: 4, status: completed, source: NUS}
+        - {course_code: EE4308, units: 4, status: completed, source: NUS}
+        - {course_code: EE4309, units: 4, status: completed, source: NUS}
+        - {course_code: EE4311, units: 4, status: completed, source: NUS}
+        - {course_code: EE4705, units: 4, status: completed, source: NUS}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "Robotics path selected: COURSEWORK_ONLY (20/20 units)"
+    source_refs:
+      - {document: SPC, page: 8, quote: "(ii) Choose 20 Units from basket of Robotics electives"}
+
+  - id: robotics_capstone_path_pass
+    description: 12 units Robotics electives + EE4002D tagged robotics (capstone path).
+    why_this_matters: Validates Robotics Path 1 and topic-tag recognition on the capstone.
+    assert_focus: RBT_PATH1_CAPSTONE + topic_tags
+    transcript:
+      courses:
+        - {course_code: EE3305, units: 4, status: completed, source: NUS}
+        - {course_code: EE4308, units: 4, status: completed, source: NUS}
+        - {course_code: EE4309, units: 4, status: completed, source: NUS}
+        - {course_code: EE4002D, units: 8, status: completed, source: NUS, topic_tags: [robotics]}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3305, requirement_id: RBT_BASKET, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4308, requirement_id: RBT_BASKET, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4309, requirement_id: RBT_BASKET, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4002D, requirement_id: RBT_CAPSTONE, units: 8, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "Robotics path selected: WITH_CAPSTONE (12 basket units + robotics capstone)"
+    source_refs:
+      - {document: SPC, page: 8, quote: "(i) Choose 12 Units ... and complete a final-year Capstone"}
+
+  - id: robotics_capstone_untagged_fail
+    description: 12 units Robotics electives + EE4002D with NO robotics topic tag.
+    why_this_matters: >
+      Capstone path requires the topic tag `robotics`; an untagged capstone must
+      not satisfy Path 1, and 12 units alone is short of Path 2's 20.
+    assert_focus: RBT_PATH1_CAPSTONE topic-tag enforcement
+    transcript:
+      courses:
+        - {course_code: EE3305, units: 4, status: completed, source: NUS}
+        - {course_code: EE4308, units: 4, status: completed, source: NUS}
+        - {course_code: EE4309, units: 4, status: completed, source: NUS}
+        - {course_code: EE4002D, units: 8, status: completed, source: NUS, topic_tags: []}
+    expected_pass: false
+    expected_failed_requirements: [RBT_PATH1_CAPSTONE, RBT_PATH2_COURSEWORK]
+    expected_failed_constraints: []
+    expected_warnings:
+      - "Robotics capstone present but not tagged 'robotics'; Path 1 not satisfied"
+      - "Robotics basket only 12/20 units; Path 2 not satisfied"
+    source_refs:
+      - {document: SPC, page: 8, quote: "complete a final-year Capstone"}
+      - {document: PRM, line: 702, quote: "12 units Robotics electives plus EE4002D topic_tag=robotics"}
+
+  - id: robotics_capstone_overlap_lock_fail
+    description: >
+      EE4002D (robotics) double-counted CC + Robotics, AND another Robotics elective
+      (EE4308) also double-counted with TE.
+    why_this_matters: >
+      Highest-priority capstone lock test: an 8u capstone CC<->spec double-count
+      consumes the full overlap budget, forbidding any further double-count.
+    assert_focus: CAP_LOCK
+    transcript:
+      courses:
+        - {course_code: EE4002D, units: 8, status: completed, source: NUS, topic_tags: [robotics]}
+        - {course_code: EE3305, units: 4, status: completed, source: NUS}
+        - {course_code: EE4308, units: 4, status: completed, source: NUS}
+        - {course_code: EE4309, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE4002D, requirement_id: CC_CAPSTONE, units: 8, allocation_role: primary, manual: true}
+        - {course_code: EE4002D, requirement_id: RBT_CAPSTONE, units: 8, allocation_role: double_count, manual: true}
+        - {course_code: EE4308, requirement_id: RBT_BASKET, units: 4, allocation_role: double_count, manual: true}
+        - {course_code: EE4308, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: []
+    expected_failed_constraints: [CAP_LOCK]
+    expected_warnings:
+      - "Robotics overlap budget 8/8 consumed by capstone; no further double-count permitted"
+    source_refs:
+      - {document: SPC, page: 1, quote: "if a student double counts Capstone project ... then he/she cannot double count any technical elective for that Specialisation"}
+      - {document: PRM, line: 706, quote: "fail because capstone consumes the full 8-unit overlap budget"}
+
+  - id: spt_standard_pass
+    description: EE3105 + satellite-tagged EE4002R + 2 SPT electives (EE3131C, EE4101).
+    why_this_matters: Validates SPT standard path and satellite topic-tag handling.
+    assert_focus: SPT_CORE + SPT_ELECTIVES_MIN_2
+    transcript:
+      courses:
+        - {course_code: EE3105, units: 4, status: completed, source: NUS}
+        - {course_code: EE4002R, units: 8, status: completed, source: NUS, topic_tags: [satellite]}
+        - {course_code: EE3131C, units: 4, status: completed, source: NUS}
+        - {course_code: EE4101, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3105, requirement_id: SPT_CORE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4002R, requirement_id: SPT_CORE, units: 8, allocation_role: primary, manual: true}
+        - {course_code: EE3131C, requirement_id: SPT_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4101, requirement_id: SPT_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "SPT SEP mapped units: 0 (capstone used)"
+    source_refs:
+      - {document: SPC, page: 9, quote: "EE3105 ... EE4002D Design Capstone or EE4002R ... (satellite-related) ... Choose at least 2 courses"}
+
+  - id: spt_capstone_sep_forbidden_fail
+    description: SPT uses satellite capstone AND maps a SEP course to SPT.
+    why_this_matters: >
+      When capstone fulfils SPT/IoT/Rbt/MQM, zero SEP courses may map to that
+      Specialisation. Distinct from the generic 8-unit SEP cap.
+    assert_focus: SEP_CAPSTONE_FORBIDS_SEP
+    transcript:
+      courses:
+        - {course_code: EE3105, units: 4, status: completed, source: NUS}
+        - {course_code: EE4002R, units: 8, status: completed, source: NUS, topic_tags: [satellite]}
+        - {course_code: EE4314, units: 4, status: completed, source: SEP, mapped_to: EE4314, approved_for: [SPT]}
+    manual_allocation:
+      allocations:
+        - {course_code: EE4002R, requirement_id: SPT_CORE, units: 8, allocation_role: primary, manual: true}
+        - {course_code: EE4314, requirement_id: SPT_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: []
+    expected_failed_constraints: [SEP_CAPSTONE_FORBIDS_SEP]
+    expected_warnings:
+      - "Capstone used for SPT; no SEP courses may be mapped to SPT (EE4314 rejected)"
+    source_refs:
+      - {document: SPC, page: 1, quote: "for students who are using capstone to fulfil SPT, IoT, Rbt, MQM Specialisations, they cannot map any SEP courses"}
+  - id: mqm_ee2027_overlap_budget
+    description: EE2027 allocated to EE Major core AND MQM core; MLE2105 + 3 MQM electives.
+    why_this_matters: >
+      EE2027 is already Major core; reusing it for MQM must consume exactly 4 units
+      of MQM's 8-unit overlap budget (not 0, not 8).
+    assert_focus: MQM_EE2027_OVERLAP
+    transcript:
+      courses:
+        - {course_code: EE2027, units: 4, status: completed, source: NUS}
+        - {course_code: MLE2105, units: 4, status: completed, source: NUS}
+        - {course_code: EE3431C, units: 4, status: completed, source: NUS}
+        - {course_code: EE4409, units: 4, status: completed, source: NUS}
+        - {course_code: EE4435, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE2027, requirement_id: EE24JC_MAJOR_EE2027, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE2027, requirement_id: MQM_CORE, units: 4, allocation_role: double_count, manual: true}
+        - {course_code: MLE2105, requirement_id: MQM_CORE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3431C, requirement_id: MQM_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4409, requirement_id: MQM_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4435, requirement_id: MQM_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "MQM overlap budget: 4 / 8 units used (EE2027 double-counted with Major)"
+    source_refs:
+      - {document: SPC, page: 11, quote: "Core (compulsory) EE2027 ... MLE2105"}
+      - {document: PRM, line: 503, quote: "If EE2027 is also allocated to MQM, it should consume 4 units of MQM overlap budget."}
+
+  - id: mqm_overlap_exceeds_budget_fail
+    description: >
+      EE2027 double-counted with Major (4u) AND EE4002D double-counted with Common
+      Curriculum for MQM (8u). Total MQM overlap = 12u > 8u, and capstone lock triggers.
+    why_this_matters: >
+      Stacks two overlap sources to exceed the 8u budget and simultaneously trip the
+      capstone lock. Both failure modes should surface.
+    assert_focus: SPEC_MAX_OVERLAP_8 + CAP_LOCK (MQM)
+    transcript:
+      courses:
+        - {course_code: EE2027, units: 4, status: completed, source: NUS}
+        - {course_code: MLE2105, units: 4, status: completed, source: NUS}
+        - {course_code: EE4002D, units: 8, status: completed, source: NUS, topic_tags: [mqm]}
+        - {course_code: EE3431C, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE2027, requirement_id: EE24JC_MAJOR_EE2027, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE2027, requirement_id: MQM_CORE, units: 4, allocation_role: double_count, manual: true}
+        - {course_code: EE4002D, requirement_id: CC_CAPSTONE, units: 8, allocation_role: primary, manual: true}
+        - {course_code: EE4002D, requirement_id: MQM_ELECTIVE, units: 8, allocation_role: double_count, manual: true}
+    expected_pass: false
+    expected_failed_requirements: []
+    expected_failed_constraints: [SPEC_MAX_OVERLAP_8, CAP_LOCK]
+    expected_warnings:
+      - "MQM overlap budget exceeded: 12 / 8 units"
+      - "Capstone double-counted to MQM; no further double-count allowed (EE2027 overlap invalid)"
+    source_refs:
+      - {document: SPC, page: 1, quote: "at least 12 Units of the Specialisation must be distinct and not overlapping"}
+      - {document: PRM, line: 727, quote: "fail if total MQM overlap exceeds 8 units or violates capstone lock"}
+
+  - id: sep_te_one_nus_one_sep_pass
+    description: One NUS TE (EE4302) + one SEP-mapped EE4xxx TE (EE4308).
+    why_this_matters: >
+      Validates the SEP TE rule lower bound: exactly one SEP TE allowed for Major,
+      and at least one NUS TE present.
+    assert_focus: SEP_TE_ONE_NUS + SEP_TE_MAX_ONE_MAPPED
+    transcript:
+      courses:
+        - {course_code: EE4302, units: 4, status: completed, source: NUS}
+        - {course_code: EE4308, units: 4, status: completed, source: SEP, mapped_to: EE4308, approved_for: [EE_TE]}
+    manual_allocation:
+      allocations:
+        - {course_code: EE4302, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4308, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings: []
+    source_refs:
+      - {document: SPC, page: 1, quote: "At least one TE ... must be done at NUS. ... map back one EE3xxxC/EE4xxx from SEP"}
+
+  - id: sep_te_all_sep_fail
+    description: Both TEs are SEP-mapped (EE4308, EE4309); no NUS TE.
+    why_this_matters: >
+      At least one TE must be done at NUS; also at most one SEP TE may count to Major.
+      Two independent constraints fail here.
+    assert_focus: SEP_TE_ONE_NUS + SEP_TE_MAX_ONE_MAPPED
+    transcript:
+      courses:
+        - {course_code: EE4308, units: 4, status: completed, source: SEP, mapped_to: EE4308, approved_for: [EE_TE]}
+        - {course_code: EE4309, units: 4, status: completed, source: SEP, mapped_to: EE4309, approved_for: [EE_TE]}
+    manual_allocation:
+      allocations:
+        - {course_code: EE4308, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4309, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: [TE_MIN_2]
+    expected_failed_constraints: [SEP_TE_ONE_NUS, SEP_TE_MAX_ONE_MAPPED]
+    expected_warnings:
+      - "At least one TE must be completed at NUS"
+      - "At most one SEP-mapped TE may count toward Major TE (2 mapped)"
+    source_refs:
+      - {document: SPC, page: 1, quote: "At least one TE, i.e., either EE3xxxC or EE4xxx, must be done at NUS"}
+
+  - id: sep_specialisation_max_8_units_pass
+    description: One 8-unit (or two 4-unit) SEP course(s) mapped to a single Specialisation (AE).
+    why_this_matters: Boundary at exactly 8 SEP units per Specialisation (inclusive).
+    assert_focus: SEP_SPEC_MAX_8 boundary (==8 passes)
+    transcript:
+      courses:
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3431C, units: 4, status: completed, source: NUS}
+        - {course_code: EE4407, units: 4, status: completed, source: SEP, mapped_to: EE4407, approved_for: [AE]}
+        - {course_code: EE4415, units: 4, status: completed, source: SEP, mapped_to: EE4415, approved_for: [AE]}
+        - {course_code: EE4409, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3408C, requirement_id: AE_CORE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3431C, requirement_id: AE_CORE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4407, requirement_id: AE_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4415, requirement_id: AE_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4409, requirement_id: AE_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "AE SEP mapped units: 8 / 8 (at limit)"
+    source_refs:
+      - {document: SPC, page: 1, quote: "Students can only map up to 8 Units of unique SEP courses per Specialisation"}
+
+  - id: sep_specialisation_over_8_units_fail
+    description: 12 units of SEP courses (3 x 4u) mapped to one Specialisation (AE).
+    why_this_matters: Just over the 8-unit SEP-per-Specialisation cap.
+    assert_focus: SEP_SPEC_MAX_8 (>8 fails)
+    transcript:
+      courses:
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3431C, units: 4, status: completed, source: NUS}
+        - {course_code: EE4407, units: 4, status: completed, source: SEP, mapped_to: EE4407, approved_for: [AE]}
+        - {course_code: EE4415, units: 4, status: completed, source: SEP, mapped_to: EE4415, approved_for: [AE]}
+        - {course_code: EE4409, units: 4, status: completed, source: SEP, mapped_to: EE4409, approved_for: [AE]}
+    manual_allocation:
+      allocations:
+        - {course_code: EE4407, requirement_id: AE_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4415, requirement_id: AE_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4409, requirement_id: AE_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: []
+    expected_failed_constraints: [SEP_SPEC_MAX_8]
+    expected_warnings:
+      - "AE SEP mapped units: 12 / 8 (exceeds cap)"
+    source_refs:
+      - {document: SPC, page: 1, quote: "up to 8 Units of unique SEP courses per Specialisation"}
+
+  - id: sep_same_course_two_specialisations_fail
+    description: Same SEP course (EE4409) mapped to both Robotics and IoT.
+    why_this_matters: >
+      A SEP course approved for one Specialisation cannot be remapped to another.
+      Tests cross-Specialisation uniqueness, not the per-spec cap.
+    assert_focus: SEP_SPEC_NO_REUSE
+    transcript:
+      courses:
+        - {course_code: EE4409, units: 4, status: completed, source: SEP, mapped_to: EE4409, approved_for: [RBT, IOT]}
+    manual_allocation:
+      allocations:
+        - {course_code: EE4409, requirement_id: RBT_BASKET, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4409, requirement_id: IOT_CORE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: []
+    expected_failed_constraints: [SEP_SPEC_NO_REUSE]
+    expected_warnings:
+      - "SEP course EE4409 mapped to more than one Specialisation (Robotics, IoT)"
+    source_refs:
+      - {document: SPC, page: 1, quote: "mapped SEP courses approved for one specific Specialisation, should not be mapped again to another Specialisation/Minor"}
+
+  - id: ue_residual_does_not_consume_overlap
+    description: >
+      A Specialisation course (EE4407, AE elective) allocated to AE and residual UE
+      only; no other explicit requirement.
+    why_this_matters: >
+      UE is residual capacity. A spec-course that also sits in UE must NOT count as
+      an overlap, otherwise budgets are spuriously consumed.
+    assert_focus: UE_NO_OVERLAP_CONSUME
+    transcript:
+      courses:
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3431C, units: 4, status: completed, source: NUS}
+        - {course_code: EE4407, units: 4, status: completed, source: NUS}
+        - {course_code: EE4415, units: 4, status: completed, source: NUS}
+        - {course_code: EE4409, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE4407, requirement_id: AE_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4407, requirement_id: EE24JC_UE, units: 4, allocation_role: residual_ue, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "AE overlap budget: 0 / 8 units used (UE residual is not overlap)"
+    source_refs:
+      - {document: PRM, line: 362, quote: "If a course is allocated to a Specialisation and residual UE only, this does not count as overlap."}
+  - id: alias_ee3305_me3243_robotics_basket
+    description: Student took ME3243 (the ME-coded twin of EE3305) toward Robotics basket.
+    why_this_matters: >
+      EE3305 and ME3243 are the same course (Robotic System Design). The auditor
+      must treat ME3243 as satisfying the EE3305 basket slot via alias resolution.
+    assert_focus: ALIAS_EE3305_ME3243
+    transcript:
+      courses:
+        - {course_code: ME3243, units: 4, status: completed, source: NUS}
+        - {course_code: EE4308, units: 4, status: completed, source: NUS}
+        - {course_code: EE4309, units: 4, status: completed, source: NUS}
+        - {course_code: EE4311, units: 4, status: completed, source: NUS}
+        - {course_code: EE4705, units: 4, status: completed, source: NUS}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "ME3243 resolved to EE3305 (alias) for Robotics basket"
+    source_refs:
+      - {document: SPC, page: 8, quote: "EE3305/ME3243 Robotic System Design"}
+
+  - id: alias_ee3306_me3163_double_count_fail
+    description: >
+      Student took both EE3306 and ME3163 and tries to count them as two distinct
+      Industry 4.0 core courses.
+    why_this_matters: >
+      EE3306 and ME3163 are the SAME course; counting both as distinct units would
+      inflate progress. Alias collapse must prevent double-credit.
+    assert_focus: ALIAS_EE3306_ME3163 (no double-credit)
+    transcript:
+      courses:
+        - {course_code: EE3306, units: 4, status: completed, source: NUS}
+        - {course_code: ME3163, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3306, requirement_id: IND4_CORE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: ME3163, requirement_id: IND4_CORE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_constraints: [ALIAS_DUPLICATE_CREDIT]
+    expected_failed_requirements: []
+    expected_warnings:
+      - "EE3306 and ME3163 are the same course; only one may be credited"
+    source_refs:
+      - {document: SPC, page: 6, quote: "EE3306/ME3163 Introduction to Cyber Physical Systems"}
+
+  - id: manual_override_changes_greedy_choice
+    description: >
+      Greedy would allocate EE3331C to TC (priority 4 before TE); manual allocation
+      forces EE3331C to TE and uses EE3408C/EE3131C/EE3731C for the 3 TCs.
+    why_this_matters: >
+      Manual allocation must override the greedy result while constraints still hold.
+      Confirms the override pathway is honoured, not ignored.
+    assert_focus: ALLOC_MANUAL_OVERRIDE
+    transcript:
+      courses:
+        - {course_code: EE3331C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3131C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3731C, units: 4, status: completed, source: NUS}
+        - {course_code: EE4302, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3408C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3131C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3731C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3331C, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4302, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "Manual allocation applied; greedy allocation overridden for EE3331C (TC -> TE)"
+    source_refs:
+      - {document: PRM, line: 547, quote: "Manual allocation should override greedy allocation, but constraints must still be evaluated."}
+
+  - id: manual_alloc_unknown_course_error
+    description: Manual allocation references a course (EE9999) not present in transcript.
+    why_this_matters: >
+      Invalid manual allocations must produce a clear error, not be silently ignored
+      or treated as satisfied.
+    assert_focus: ALLOC_MANUAL_OVERRIDE (validation)
+    transcript:
+      courses:
+        - {course_code: EE4302, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE9999, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_constraints: [MANUAL_ALLOC_INVALID]
+    expected_failed_requirements: []
+    expected_warnings:
+      - "Manual allocation references EE9999 which is not in the transcript"
+    source_refs:
+      - {document: PRM, line: 547, quote: "Invalid manual allocations should produce clear errors or failed constraint results."}
+
+  - id: manual_alloc_units_exceed_attempt_error
+    description: >
+      Manual allocation assigns 8 units of a 4-unit course (EE4302) to a single requirement.
+    why_this_matters: >
+      Allocation units must not exceed the attempt's actual units; otherwise unit
+      accounting can be gamed.
+    assert_focus: ALLOC_MANUAL_OVERRIDE (unit conservation)
+    transcript:
+      courses:
+        - {course_code: EE4302, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE4302, requirement_id: EE24JC_TE, units: 8, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_constraints: [MANUAL_ALLOC_INVALID]
+    expected_failed_requirements: []
+    expected_warnings:
+      - "Allocation of 8 units exceeds EE4302's 4 available units"
+    source_refs:
+      - {document: PRM, line: 547, quote: "Invalid manual allocations should produce clear errors"}
+
+  - id: manual_alloc_ineligible_requirement_fail
+    description: Manual allocation maps EE2012 (a fixed major core) to TE.
+    why_this_matters: >
+      Manual override cannot place a course into a requirement it is not eligible for;
+      eligibility still gates allocation validity.
+    assert_focus: ALLOC_ELIGIBILITY_NEQ_ALLOCATION (manual cannot bypass eligibility)
+    transcript:
+      courses:
+        - {course_code: EE2012, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE2012, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_constraints: [MANUAL_ALLOC_INELIGIBLE]
+    expected_failed_requirements: [TE_MIN_2]
+    expected_warnings:
+      - "EE2012 is not eligible for the TE requirement (EE4xxx/EE3xxxC/EE3xxx only)"
+    source_refs:
+      - {document: CHK, page: 2, quote: "Any combination of Technical elective EE4xxx, ... EE3xxxC, EE3xxx"}
+
+  - id: iot_electives_units_equivalent_pass
+    description: >
+      IoT core (CS3237, EE4211, EE4409) + a single 8-unit project (CG4002, IoT-tagged)
+      as the "8 units equivalent" elective.
+    why_this_matters: >
+      IoT electives allow "2 electives OR 8 units equivalent". A single 8u project
+      should satisfy via units even though it is only one course. See ambiguity A-08.
+    assert_focus: IOT_ELECTIVES_MIN_2_OR_8U
+    transcript:
+      courses:
+        - {course_code: CS3237, units: 4, status: completed, source: NUS}
+        - {course_code: EE4211, units: 4, status: completed, source: NUS}
+        - {course_code: EE4409, units: 4, status: completed, source: NUS}
+        - {course_code: CG4002, units: 8, status: completed, source: NUS, topic_tags: [iot]}
+    manual_allocation:
+      allocations:
+        - {course_code: CG4002, requirement_id: IOT_ELECTIVE, units: 8, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "IoT electives satisfied by 8-unit equivalent (single project course)"
+    source_refs:
+      - {document: SPC, page: 7, quote: "Choose at least 2 electives, or total 8 Units equivalent"}
+
+  - id: spt_idp_path_inactive_without_flag_fail
+    description: >
+      Student uses the iDP replacement path (EE3105 + 4 SPT electives, no capstone)
+      but has NO student_flags: [IDP].
+    why_this_matters: >
+      The iDP path must only activate when the IDP flag is present; otherwise the
+      standard path (compulsory capstone) applies and should fail without a capstone.
+    assert_focus: SPT_IDP_PATH gating
+    transcript:
+      student_flags: []
+      courses:
+        - {course_code: EE3105, units: 4, status: completed, source: NUS}
+        - {course_code: EE3104C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3131C, units: 4, status: completed, source: NUS}
+        - {course_code: EE4101, units: 4, status: completed, source: NUS}
+        - {course_code: EE4115, units: 4, status: completed, source: NUS}
+    expected_pass: false
+    expected_failed_requirements: [SPT_CORE]
+    expected_failed_constraints: []
+    expected_warnings:
+      - "SPT standard path requires a satellite capstone; iDP replacement path inactive (no IDP flag)"
+    source_refs:
+      - {document: SPC, page: 9, quote: "For students in the Innovation and Design Programme (iDP), EE4002D may be replaced"}
+      - {document: PRM, line: 475, quote: "do not activate unless student_flags: [IDP] is present"}
+
+  - id: spt_idp_eg4301_units_not_counted
+    description: >
+      iDP student (student_flags: [IDP]) uses EE3105 + 4 SPT electives, and also has
+      EG4301 tagged satellite. EG4301 units must NOT count toward SPT.
+    why_this_matters: >
+      Prevents triple counting (common curriculum + 2nd major + Specialisation) via EG4301.
+    assert_focus: SPT_IDP_PATH (EG4301 exclusion)
+    transcript:
+      student_flags: [IDP]
+      courses:
+        - {course_code: EE3105, units: 4, status: completed, source: NUS}
+        - {course_code: EE3104C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3131C, units: 4, status: completed, source: NUS}
+        - {course_code: EE4101, units: 4, status: completed, source: NUS}
+        - {course_code: EE4115, units: 4, status: completed, source: NUS}
+        - {course_code: EG4301, units: 12, status: completed, source: NUS, topic_tags: [satellite]}
+    manual_allocation:
+      allocations:
+        - {course_code: EG4301, requirement_id: SPT_CORE, units: 12, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_constraints: [SPT_EG4301_NOT_COUNTED]
+    expected_failed_requirements: []
+    expected_warnings:
+      - "EG4301 units cannot be counted toward SPT (triple-counting avoidance)"
+    source_refs:
+      - {document: SPC, page: 9, quote: "the Units from the FYP course will not be counted towards this Specialisation to avoid triple counting"}
+
+  - id: capstone_double_count_two_specs_fail
+    description: >
+      EE4002D (8u) double-counted to CC AND to BOTH Robotics and IoT Specialisations.
+    why_this_matters: >
+      A single capstone cannot satisfy two Specialisations' overlap simultaneously;
+      and even one CC<->spec double-count triggers the lock for that spec.
+    assert_focus: CAP_LOCK across multiple specs / single-instance reuse
+    transcript:
+      courses:
+        - {course_code: EE4002D, units: 8, status: completed, source: NUS, topic_tags: [robotics, iot]}
+    manual_allocation:
+      allocations:
+        - {course_code: EE4002D, requirement_id: CC_CAPSTONE, units: 8, allocation_role: primary, manual: true}
+        - {course_code: EE4002D, requirement_id: RBT_CAPSTONE, units: 8, allocation_role: double_count, manual: true}
+        - {course_code: EE4002D, requirement_id: IOT_ELECTIVE, units: 8, allocation_role: double_count, manual: true}
+    expected_pass: false
+    expected_failed_constraints: [CAP_LOCK, SPEC_OVERLAP_SINGLE_INSTANCE]
+    expected_failed_requirements: []
+    expected_warnings:
+      - "Capstone cannot be double-counted into more than one Specialisation"
+    source_refs:
+      - {document: SPC, page: 1, quote: "if a student double counts Capstone project ... cannot double count any technical elective for that Specialisation"}
+
+  - id: config_merge_conflict_fail
+    description: >
+      Two config files define requirement id RBT_PATH1_CAPSTONE with different
+      min_units (12 vs 16) and no override flag.
+    why_this_matters: >
+      Merge must fail fast on conflicting same-id objects rather than silently
+      picking one, which would corrupt the rule set.
+    assert_focus: CFG_MERGE_BY_ID (conflict)
+    transcript:
+      courses: []
+    config_overlay:
+      - {file: robotics.yaml, requirement: {id: RBT_PATH1_CAPSTONE, min_units: 12}}
+      - {file: robotics_alt.yaml, requirement: {id: RBT_PATH1_CAPSTONE, min_units: 16}}
+    expected_pass: false
+    expected_failed_constraints: [CONFIG_MERGE_CONFLICT]
+    expected_failed_requirements: []
+    expected_warnings:
+      - "Conflicting definitions for id RBT_PATH1_CAPSTONE; set override: true to resolve"
+    source_refs:
+      - {document: PRM, line: 213, quote: "If two objects with the same id conflict, fail fast with a clear error unless an explicit override: true is set."}
+
+  - id: config_merge_identical_ok
+    description: Two config files define identical requirement id AE_CORE; merge accepts.
+    why_this_matters: Idempotent merge of duplicates must not error.
+    assert_focus: CFG_MERGE_BY_ID (identical)
+    transcript:
+      courses: []
+    config_overlay:
+      - {file: ae.yaml, requirement: {id: AE_CORE, courses: [EE3408C, EE3431C]}}
+      - {file: ae_dup.yaml, requirement: {id: AE_CORE, courses: [EE3408C, EE3431C]}}
+    expected_pass: true
+    expected_failed_constraints: []
+    expected_failed_requirements: []
+    expected_warnings: []
+    source_refs:
+      - {document: PRM, line: 212, quote: "If two objects with the same id are identical, accept."}
+
+  - id: source_ref_preserved_on_failure
+    description: >
+      A failing TC requirement (only 1 TC) must surface its source_ref (CHK p.1)
+      in the audit output.
+    why_this_matters: >
+      Every failed/important rule must carry a source reference; this is a core
+      promise of the prototype and must survive allocation + reporting.
+    assert_focus: CFG_SOURCE_REF preservation through audit
+    transcript:
+      courses:
+        - {course_code: EE3131C, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3131C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: [TC_MIN_3]
+    expected_failed_constraints: []
+    expected_warnings:
+      - "Failed requirement TC_MIN_3 must include source_ref {document: CHK, page: 1}"
+    source_refs:
+      - {document: CHK, page: 1, quote: "AY24 intake (JC/non-poly): Read 3 T.C"}
+      - {document: PRM, line: 603, quote: "Source references for each failed or important rule"}
+
+  - id: level1000_cap_exceeded_warn
+    description: >
+      Transcript includes 64 units of level-1000 courses (e.g., many POY/elective 1000s
+      not on the exclusion list).
+    why_this_matters: >
+      The 60-unit level-1000 cap is easy to overlook; exceeding it should at least warn.
+      See ambiguity A-13.
+    assert_focus: LVL1000_MAX_60
+    transcript:
+      courses:
+        - {course_code: EE1111A, units: 4, status: completed, source: NUS}
+        - {course_code: CS1010E, units: 4, status: completed, source: NUS}
+        - {course_code: MA1511, units: 2, status: completed, source: NUS}
+        - {course_code: MA1512, units: 2, status: completed, source: NUS}
+        - {course_code: MA1508E, units: 4, status: completed, source: NUS}
+        - {course_code: GEA1000, units: 4, status: completed, source: NUS}
+        - {course_code: PF1101, units: 4, status: completed, source: NUS}
+        - {course_code: DTK1234, units: 4, status: completed, source: NUS}
+        - {course_code: EG1311, units: 4, status: completed, source: NUS}
+        - {course_code: LAB1101, units: 4, status: completed, source: NUS}
+        - {course_code: LAB1102, units: 4, status: completed, source: NUS}
+        - {course_code: LAB1103, units: 4, status: completed, source: NUS}
+        - {course_code: LAB1104, units: 4, status: completed, source: NUS}
+        - {course_code: LAB1105, units: 4, status: completed, source: NUS}
+        - {course_code: LAB1106, units: 4, status: completed, source: NUS}
+        - {course_code: LAB1107, units: 4, status: completed, source: NUS}
+    expected_pass: false
+    expected_failed_constraints: [LVL1000_MAX_60]
+    expected_failed_requirements: []
+    expected_warnings:
+      - "Level-1000 units 64 exceed the 60-unit cap; 4 units will not count toward graduation"
+    source_refs:
+      - {document: CHK, page: 3, quote: "Students should not read more than 60 units of level 1000 courses"}
+
+  - id: emerging_tech_set_elective_needs_review
+    description: >
+      Student relies on EE4032 (Blockchain) as a SET elective to reach the 2-elective minimum.
+    why_this_matters: >
+      EE4032/EE4205 placement under SET is ambiguous (A-09); using them must not
+      silently pass but should flag for human review.
+    assert_focus: A-09 conservative behaviour
+    transcript:
+      courses:
+        - {course_code: EE4502, units: 4, status: completed, source: NUS}
+        - {course_code: EE4503, units: 4, status: completed, source: NUS}
+        - {course_code: EE4513, units: 4, status: completed, source: NUS}
+        - {course_code: EE4501, units: 4, status: completed, source: NUS}
+        - {course_code: EE4032, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE4032, requirement_id: SET_ELECTIVE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: [SET_ELECTIVES_MIN_2]
+    expected_failed_constraints: []
+    expected_warnings:
+      - "EE4032 placement under SET is unconfirmed (Emerging Technologies); needs_human_review"
+    source_refs:
+      - {document: SPC, page: 10, quote: "Emerging Technologies EE4032 Blockchain Engineering EE4205 Quantum Communication and Cryptography"}
+
+  - id: order_independence_check
+    description: >
+      Same transcript as major_core_pass_basic but with course list in reversed order.
+    why_this_matters: >
+      Audit result must be independent of transcript ordering (metamorphic property).
+      Result must equal major_core_pass_basic exactly.
+    assert_focus: metamorphic order-independence
+    transcript:
+      courses:
+        - {course_code: EE4307, units: 4, status: completed, source: NUS}
+        - {course_code: EE4301, units: 4, status: completed, source: NUS}
+        - {course_code: EE2028, units: 4, status: completed, source: NUS}
+        - {course_code: PC2020, units: 4, status: completed, source: NUS}
+        - {course_code: EE2027, units: 4, status: completed, source: NUS}
+        - {course_code: EE2023, units: 4, status: completed, source: NUS}
+        - {course_code: EE2022, units: 4, status: completed, source: NUS}
+        - {course_code: EE2012, units: 4, status: completed, source: NUS}
+        - {course_code: EE2111A, units: 4, status: completed, source: NUS}
+        - {course_code: EE1111A, units: 4, status: completed, source: NUS}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings: []
+    source_refs:
+      - {document: PRM, line: 514, quote: "Use a deterministic, simple allocation priority"}
+
