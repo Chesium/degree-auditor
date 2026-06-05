@@ -18,10 +18,11 @@ def audit(
     config: DegreeAuditConfig,
     courses: list[CourseAttempt],
     manual_allocations: list[Allocation] | None = None,
+    student_flags: list[str] | None = None,
 ) -> AuditResult:
     allocations = manual_allocations if manual_allocations is not None else plan_allocations(config, courses)
     constraint_results = evaluate_constraints(config, courses, allocations)
-    specialisation_results = evaluate_specialisations(config, courses, allocations)
+    specialisation_results = evaluate_specialisations(config, courses, allocations, student_flags or [])
     failed_constraints = [result for result in constraint_results if not result.passed]
     failed_specialisations = [result for result in specialisation_results if result.status == "FAIL"]
 

@@ -16,13 +16,18 @@ from degree_auditor.models import (
 )
 
 
-SUPPORTED_SPECIALISATIONS = {"AE", "IND4", "SET", "MQM", "RBT"}
+SUPPORTED_SPECIALISATIONS = {"AE", "IND4", "SET", "MQM", "RBT", "SPT"}
+CAPSTONE_LOCK_SPECIALISATIONS = {"SPT", "RBT", "IOT", "MQM"}
+CAPSTONE_CODES = {"EE4002D", "EE4002R"}
+COMMON_CURRICULUM_CAPSTONE_REQUIREMENT_ID = "CDE_CAPSTONE"
+TECHNICAL_ELECTIVE_REQUIREMENT_ID = "EE24JC_TE"
 
 
 def evaluate_specialisations(
     config: DegreeAuditConfig,
     courses: list[CourseAttempt],
     allocations: list[Allocation],
+    student_flags: list[str] | None = None,
 ) -> list[SpecialisationResult]:
     requirement_to_specialisation = _requirement_to_specialisation(config)
     selected_ids = {
@@ -33,7 +38,7 @@ def evaluate_specialisations(
     }
     specialisations = {specialisation.id: specialisation for specialisation in config.specialisations}
     return [
-        _evaluate_specialisation(config, specialisations[specialisation_id], courses, allocations)
+        _evaluate_specialisation(config, specialisations[specialisation_id], courses, allocations, student_flags or [])
         for specialisation_id in sorted(selected_ids)
         if specialisation_id in SUPPORTED_SPECIALISATIONS
     ]
@@ -44,8 +49,14 @@ def _evaluate_specialisation(
     specialisation: Specialisation,
     courses: list[CourseAttempt],
     allocations: list[Allocation],
+    student_flags: list[str],
 ) -> SpecialisationResult:
-    candidate_paths = specialisation.paths or [
+    available_paths = [
+        path
+        for path in specialisation.paths
+        if set(path.activation_flags) <= {flag.upper() for flag in student_flags}
+    ]
+    candidate_paths = available_paths or [
         SpecialisationPath(
             id=f"{specialisation.id}_STANDARD",
             description=specialisation.description,
@@ -61,7 +72,9 @@ def _evaluate_specialisation(
     selected = _best_path_result(path_results)
 
     units_counted = _specialisation_units(specialisation, allocations)
-    overlap_units = _overlap_units(config, specialisation, allocations)
+    generic_overlap_units = _overlap_units(config, specialisation, allocations)
+    capstone_lock = _capstone_lock(config, specialisation, courses, allocations)
+    overlap_units = specialisation.max_overlap_units if capstone_lock else generic_overlap_units
     distinct_units = max(units_counted - overlap_units, 0)
     policy_failures: list[str] = []
     if units_counted < specialisation.total_units:
@@ -75,7 +88,29 @@ def _evaluate_specialisation(
             f"Distinct units are {distinct_units}, below minimum of {specialisation.min_distinct_units}."
         )
 
-    failed_requirements = selected["failed_requirements"] + [f"{specialisation.id}_GLOBAL_POLICY"] * bool(policy_failures)
+    capstone_failures: list[str] = []
+    capstone_messages: list[str] = []
+    if capstone_lock:
+        capstone_messages.append(
+            f"Capstone lock active: {capstone_lock} consumes the {specialisation.max_overlap_units}-unit overlap budget."
+        )
+        te_overlaps = _technical_elective_overlaps_after_capstone_lock(specialisation, allocations, capstone_lock)
+        if te_overlaps:
+            capstone_failures.append(f"{specialisation.id}_CAPSTONE_LOCK")
+            capstone_messages.append(
+                "Capstone lock forbids further TE double-counting for this specialisation: "
+                + ", ".join(te_overlaps)
+                + "."
+            )
+        if _non_te_overlap_units_excluding_capstone(specialisation, allocations, capstone_lock) > 0:
+            capstone_failures.append(f"{specialisation.id}_CAPSTONE_LOCK")
+            capstone_messages.append("Capstone lock leaves no overlap budget for additional non-UE overlaps.")
+
+    failed_requirements = (
+        selected["failed_requirements"]
+        + [f"{specialisation.id}_GLOBAL_POLICY"] * bool(policy_failures)
+        + capstone_failures
+    )
     status = "PASS" if not failed_requirements else "FAIL"
 
     return SpecialisationResult(
@@ -87,7 +122,7 @@ def _evaluate_specialisation(
         distinct_units=distinct_units,
         satisfied_requirements=selected["satisfied_requirements"],
         failed_requirements=failed_requirements,
-        messages=selected["messages"] + policy_failures,
+        messages=selected["messages"] + policy_failures + capstone_messages,
     )
 
 
@@ -221,6 +256,107 @@ def _overlap_units(config: DegreeAuditConfig, specialisation: Specialisation, al
     return overlap
 
 
+def _capstone_lock(
+    config: DegreeAuditConfig,
+    specialisation: Specialisation,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> str | None:
+    if specialisation.id not in CAPSTONE_LOCK_SPECIALISATIONS:
+        return None
+    common_capstones = {
+        canonical_code(config, allocation.course_code)
+        for allocation in allocations
+        if allocation.requirement_id == COMMON_CURRICULUM_CAPSTONE_REQUIREMENT_ID
+        and allocation.allocation_role != AllocationRole.ignored
+        and canonical_code(config, allocation.course_code) in CAPSTONE_CODES
+    }
+    if not common_capstones:
+        return None
+    spec_requirement_ids = _specialisation_requirement_ids(specialisation)
+    for allocation in allocations:
+        code = canonical_code(config, allocation.course_code)
+        if (
+            allocation.requirement_id in spec_requirement_ids
+            and allocation.allocation_role != AllocationRole.ignored
+            and code in common_capstones
+            and _capstone_allocation_matches_requirement(config, allocation, courses)
+        ):
+            return code
+    return None
+
+
+def _capstone_allocation_matches_requirement(
+    config: DegreeAuditConfig,
+    allocation: Allocation,
+    courses: list[CourseAttempt],
+) -> bool:
+    requirement = config.requirement_by_id(allocation.requirement_id)
+    if requirement is None:
+        return False
+    if canonical_code(config, allocation.course_code) not in {canonical_code(config, course) for course in requirement.courses}:
+        return requirement.requirement_type != "project_option" and canonical_code(config, allocation.course_code) in CAPSTONE_CODES
+    return _has_topic_tags(config, allocation.course_code, requirement.topic_tags, courses)
+
+
+def _technical_elective_overlaps_after_capstone_lock(
+    specialisation: Specialisation,
+    allocations: list[Allocation],
+    capstone_code: str,
+) -> list[str]:
+    spec_requirement_ids = _specialisation_requirement_ids(specialisation)
+    spec_courses = {
+        allocation.course_code
+        for allocation in allocations
+        if allocation.requirement_id in spec_requirement_ids
+        and allocation.allocation_role != AllocationRole.ignored
+        and allocation.course_code != capstone_code
+    }
+    te_courses = {
+        allocation.course_code
+        for allocation in allocations
+        if allocation.requirement_id == TECHNICAL_ELECTIVE_REQUIREMENT_ID
+        and allocation.allocation_role != AllocationRole.ignored
+    }
+    return sorted(spec_courses & te_courses)
+
+
+def _non_te_overlap_units_excluding_capstone(
+    specialisation: Specialisation,
+    allocations: list[Allocation],
+    capstone_code: str,
+) -> int:
+    spec_requirement_ids = _specialisation_requirement_ids(specialisation)
+    units = 0
+    spec_units_by_course: dict[str, int] = {}
+    by_course: dict[str, list[Allocation]] = defaultdict(list)
+    for allocation in allocations:
+        if allocation.allocation_role != AllocationRole.ignored:
+            by_course[allocation.course_code].append(allocation)
+        if (
+            allocation.requirement_id in spec_requirement_ids
+            and allocation.allocation_role != AllocationRole.ignored
+            and allocation.course_code != capstone_code
+        ):
+            spec_units_by_course[allocation.course_code] = max(
+                spec_units_by_course.get(allocation.course_code, 0),
+                allocation.units,
+            )
+    for course_code, course_units in spec_units_by_course.items():
+        has_non_te_overlap = any(
+            allocation.requirement_id not in spec_requirement_ids
+            and allocation.requirement_id not in {
+                UE_RESIDUAL_REQUIREMENT_ID,
+                TECHNICAL_ELECTIVE_REQUIREMENT_ID,
+            }
+            and allocation.allocation_role != AllocationRole.residual_ue
+            for allocation in by_course[course_code]
+        )
+        if has_non_te_overlap:
+            units += course_units
+    return units
+
+
 def _specialisation_requirement_ids(specialisation: Specialisation) -> set[str]:
     requirement_ids = set(specialisation.requirement_ids)
     for path in specialisation.paths:
@@ -254,4 +390,3 @@ def _has_topic_tags(
             tags = {tag.lower() for tag in course.topic_tags}
             return set(required_tags) <= tags
     return False
-

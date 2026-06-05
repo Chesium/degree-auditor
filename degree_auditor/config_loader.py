@@ -27,6 +27,14 @@ def load_transcript(path: str | Path) -> list[CourseAttempt]:
     return [CourseAttempt.model_validate(item) for item in courses]
 
 
+def load_student_flags(path: str | Path) -> list[str]:
+    data = _read_yaml_file(Path(path))
+    flags = data.get("student_flags", [])
+    if not isinstance(flags, list):
+        raise ConfigLoadError(f"Transcript {path} student_flags must be a list")
+    return [str(flag).upper().strip() for flag in flags]
+
+
 def load_allocations(path: str | Path) -> list[Allocation]:
     data = _read_yaml_file(Path(path))
     allocations = data.get("allocations")
@@ -59,4 +67,3 @@ def _read_yaml_file(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ConfigLoadError(f"YAML file {path} must contain a mapping at the top level")
     return data
-

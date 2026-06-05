@@ -11,7 +11,7 @@ from rich.table import Table
 
 from degree_auditor.allocation import plan_allocations
 from degree_auditor.audit import audit
-from degree_auditor.config_loader import load_allocations, load_config, load_transcript
+from degree_auditor.config_loader import load_allocations, load_config, load_student_flags, load_transcript
 from degree_auditor.eligibility import expand_eligibility
 
 
@@ -111,8 +111,9 @@ def audit_command(
 ) -> None:
     loaded = load_config(config)
     courses = load_transcript(transcript)
+    student_flags = load_student_flags(transcript)
     allocations = load_allocations(allocation) if allocation else None
-    result = audit(loaded, courses, allocations)
+    result = audit(loaded, courses, allocations, student_flags=student_flags)
 
     if output_format == "json":
         typer.echo(json.dumps(result.model_dump(mode="json"), indent=2))
