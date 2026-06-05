@@ -1,0 +1,809 @@
+## Project goal
+
+Build a CLI-based degree auditor prototype for:
+
+* NUS B.Eng. Electrical Engineering
+* AY2024 JC / non-poly intake
+* EE Major requirements
+* EE Technical Courses (TC)
+* EE Technical Electives (TE)
+* EE Specialisations
+* SEP-mapped courses
+* Excluding second major and minor requirements for now
+
+The implementation should be source-aware and rule-driven. It should load curriculum rules from YAML configuration files, evaluate a student's completed/planned courses, produce a human-readable audit report, and generate machine-readable audit output.
+
+This is a prototype, not an official graduation checker. Every implemented rule must carry a source reference and a human-readable description derived from the provided PDF documents.
+
+## Authoritative source documents
+
+Use the PDF files in `resources` folder as the primary source of truth:
+
+1. `L_AY24JC_Checklist_Revised_3TC_4June2025.pdf`
+
+   * Main EE AY2024 JC/non-poly intake checklist.
+   * Contains Common Curriculum, UE, Engineering Core, Major Programme, TC rule, TE rule, TC/TE mutual exclusion, level-1000 limit, S/U notes.
+   * Important rules:
+
+     * Total degree requirement is 160 units.
+     * Common Curriculum CDE is 60 units.
+     * UE is 40 units.
+     * Major Requirements are 60 units.
+     * AY24 JC/non-poly intake must read 3 Technical Courses (TC).
+     * Technical Course (TC) is not Technical Elective (TE).
+     * The 3 TCs are in addition to the EE TE rule of 2 TEs.
+     * Courses used to fulfil TC cannot be used to fulfil TE, and vice versa.
+     * TC pool includes EE2026 or EE2028, whichever is not used to fulfil EE Major; EE3033 from Sem 2 AY25/26; and extended core courses EE3131C, EE3408C, EE3331C, EE3431C, EE3731C, EE3104C.
+     * TE pool includes EE4xxx, EE3xxxC, and EE3xxx, but excludes EE3033; EE3031 can only fulfil UE for AY2021-AY2024 intake, not TE.
+
+2. `ECE_Specialisations_AY2025_7July2025.pdf`
+
+   * EE Specialisations for EE AY2021 to AY2024 intake.
+   * Contains double-counting rules, SEP rules, capstone special cases, and each specialisation's course basket.
+   * Important global rules:
+
+     * Each specialisation is 20 units.
+     * Up to 8 units of each specialisation may be double-counted with another requirement.
+     * At least 12 units of each specialisation must be distinct and non-overlapping.
+     * If EE4002D/R capstone is double-counted between Common Curriculum and a Specialisation, then no further technical elective can be double-counted for that same Specialisation.
+     * This capstone rule applies to Space Technology, and to Robotics / IoT / MQM when their related capstone is used to fulfil the respective specialisation.
+     * SEP rule for EE TE: at least one TE, either EE3xxxC or EE4xxx, must be completed at NUS. At most one SEP-mapped EE3xxxC/EE4xxx may be used to fulfil the Major TE requirement.
+     * SEP rule for Specialisations: at most 8 units of unique SEP courses may be mapped per Specialisation. A SEP course approved for one Specialisation should not be mapped again to another Specialisation or Minor.
+     * If capstone is used to fulfil SPT, IoT, Rbt, or MQM, no SEP courses may be mapped to that respective Specialisation.
+
+Optional reference links:
+
+* NUS Registrar Specialisations page
+https://www.nus.edu.sg/registrar/academic-information-policies/undergraduate-students/special-programmes/specialisations
+
+* NUS Registrar Minor Programmes page
+https://www.nus.edu.sg/registrar/academic-information-policies/undergraduate-students/special-programmes/minor-programmes
+
+* NUS Registrar Double Major Programmes page
+https://www.nus.edu.sg/registrar/academic-information-policies/undergraduate-students/special-programmes/double-major-programmes
+
+* ECE SEP study plan / course mapping page
+https://online.ece.nus.edu.sg/sep/
+
+* NUSMods API
+https://api.nusmods.com/v2/
+
+* NUSMods website
+https://nusmods.com/
+
+* NUS continuation and graduation requirements
+https://www.nus.edu.sg/registrar/academic-information-policies/undergraduate-students/continuation-and-graduation-requirements
+
+* NUS S/U option page
+https://myportal.nus.edu.sg/studentportal/academics/ug/su-homepage.html
+
+
+The PDFs are more authoritative than the links for this prototype unless I explicitly say otherwise.
+
+## Non-goals for this prototype
+
+Do not implement a web app.
+Do not implement a full optimiser or CP-SAT solver yet.
+Do not implement second major or minor audits yet.
+Do not scrape live NUS pages yet.
+Do not rely on an LLM at runtime.
+Do not hard-code all rules inside Python code.
+Do not make the system silently assume ambiguous curriculum rules. If a rule is ambiguous, model it explicitly and mark it as requiring human review.
+
+## High-level design
+
+Implement a Python CLI package called `degree_auditor`.
+
+The system should separate:
+
+1. Course data
+2. Rule configuration
+3. Course eligibility
+4. Course allocation
+5. Constraint evaluation
+6. Audit reporting
+7. Test cases
+
+A key design principle:
+
+Course eligibility is not the same as course allocation.
+
+Example:
+`EE3331C` may be eligible for TC, TE, Industry 4.0 core, and SPT elective. But in a specific audit scenario it may be allocated only to TC and Industry 4.0 core. The auditor must validate whether this allocation is allowed.
+
+## Implementation requirements
+
+Use Python 3.11+.
+
+Recommended libraries:
+
+* `pydantic` for config and data validation
+* `typer` or `click` for CLI
+* `pyyaml` or `ruamel.yaml` for YAML loading
+* `rich` for terminal report rendering
+* `pytest` for tests
+
+Keep the implementation small and readable. Prefer deterministic, testable code over clever abstractions.
+
+## Expected repository structure
+
+Create a repository with approximately this structure:
+
+```text
+degree-auditor/
+  pyproject.toml
+  README.md
+  degree_auditor/
+    __init__.py
+    cli.py
+    models.py
+    config_loader.py
+    merge.py
+    eligibility.py
+    allocation.py
+    constraints.py
+    audit.py
+    reporting.py
+    examples.py
+  configs/
+    nus_ee_ay24_jc/
+      programme.yaml
+      common_curriculum.yaml
+      major.yaml
+      tc_te.yaml
+      constraints.yaml
+      course_aliases.yaml
+      course_pools.yaml
+      specialisations/
+        ae.yaml
+        industry4.yaml
+        iot.yaml
+        robotics.yaml
+        spt.yaml
+        set.yaml
+        mqm.yaml
+  examples/
+    transcripts/
+      simple_completed.yaml
+      robotics_with_capstone.yaml
+      tc_te_conflict.yaml
+      sep_mapping.yaml
+    manual_allocations/
+      empty.yaml
+      robotics_manual.yaml
+  tests/
+    test_config_loading.py
+    test_config_merge.py
+    test_course_matching.py
+    test_tc_te_rules.py
+    test_specialisation_overlap.py
+    test_capstone_rules.py
+    test_sep_rules.py
+    test_cli_snapshots.py
+```
+
+## YAML configuration design
+
+The system must support hierarchical YAML config loading from a folder.
+
+It should support commands like:
+
+```bash
+degree-auditor audit \
+  --config configs/nus_ee_ay24_jc \
+  --transcript examples/transcripts/simple_completed.yaml
+```
+
+It should also support loading multiple config folders/files and merging them by union:
+
+```bash
+degree-auditor audit \
+  --config configs/nus_ee_ay24_jc \
+  --config configs/nus_ee_ay24_jc/specialisations/robotics.yaml \
+  --transcript examples/transcripts/robotics_with_capstone.yaml
+```
+
+Merge semantics:
+
+* Lists of requirements are merged by `id`.
+* Lists of course pools are merged by `id`.
+* Lists of constraints are merged by `id`.
+* Lists of specialisations are merged by `id`.
+* If two objects with the same `id` are identical, accept.
+* If two objects with the same `id` conflict, fail fast with a clear error unless an explicit `override: true` is set.
+* Course pool includes should be unioned unless a conflict is detected.
+* Excludes should also be unioned.
+* Every loaded config object must retain `source_ref`.
+
+Each rule and constraint must contain:
+
+```yaml
+id: string
+description: string
+source_ref:
+  document: string
+  page: int | null
+  section: string | null
+  quote: string | null
+  notes: string | null
+```
+
+The `description` field should be human-readable and derived from the PDF rule text.
+
+## Data model
+
+Implement Pydantic models for at least:
+
+```text
+CourseAttempt
+CourseAlias
+CoursePool
+Requirement
+RequirementGroup
+Specialisation
+Constraint
+Allocation
+AuditResult
+ConstraintResult
+```
+
+A `CourseAttempt` should support:
+
+```yaml
+course_code: EE3331C
+title: Feedback Control Systems
+units: 4
+term: AY2025-2026 S1
+grade: A-
+su: false
+status: completed       # completed | in_progress | planned
+source: NUS             # NUS | SEP | APC | EXEMPTION | MANUAL
+mapped_to: null         # e.g. EE4XXX for SEP
+topic_tags: []          # e.g. robotics, iot, satellite, mqm
+approved_for: []        # e.g. EE_TE, RBT, IOT
+```
+
+A course allocation should support:
+
+```yaml
+course_code: EE3331C
+requirement_id: EE24JC_TC
+units: 4
+allocation_role: primary
+manual: false
+notes: null
+```
+
+Possible allocation roles:
+
+```text
+primary
+double_count
+residual_ue
+ignored
+```
+
+## Core rules to implement
+
+### EE Major Programme
+
+Implement the EE AY24 JC/non-poly major programme based on the checklist.
+
+Include:
+
+* EE1111A
+* EE2111A
+* EE2012
+* EE2022
+* EE2023
+* EE2027
+* PC2020
+* exactly one of EE2026 or EE2028 for the major digital/microcontroller choice
+* 2 EE Technical Electives
+
+Model `EE2026 or EE2028` as a choice group. The course not used for the major may be eligible for TC.
+
+### TC rule
+
+Implement the AY24 JC/non-poly Technical Course rule:
+
+* Minimum 3 TC.
+* TC is separate from TE.
+* TC and TE must be mutually exclusive.
+* Eligible TC courses:
+
+  * EE2026 or EE2028, whichever is not used to fulfil EE Major
+  * EE3033, effective from Sem 2 AY2025/26
+  * EE3131C
+  * EE3408C
+  * EE3331C
+  * EE3431C
+  * EE3731C
+  * EE3104C
+
+### TE rule
+
+Implement the EE Technical Elective rule:
+
+* Minimum 2 TE.
+* Eligible TE courses:
+
+  * EE4xxx
+  * EE3xxxC
+  * EE3xxx
+* Exclusions:
+
+  * EE3033 is not TE.
+  * EE3031 can only fulfil UE for AY2021-AY2024 intake, not TE.
+* TC and TE are mutually exclusive.
+* SEP special rule:
+
+  * At least one TE, either EE3xxxC or EE4xxx, must be done at NUS.
+  * At most one SEP-mapped EE3xxxC/EE4xxx may be used to fulfil Major TE.
+
+### UE treatment
+
+Model UE as residual graduation capacity, not as a normal double-counting requirement.
+
+Specialisation courses can occupy UE space without consuming the specialisation's 8-unit double-counting budget, unless they are also allocated to another explicit requirement such as TE, TC, Common Curriculum, or another Specialisation.
+
+### Specialisation global policy
+
+Every EE Specialisation should inherit:
+
+```yaml
+total_units: 20
+max_overlap_units: 8
+min_distinct_units: 12
+```
+
+A specialisation allocation overlaps if the same course units are also allocated to another explicit non-UE requirement.
+
+If a course is allocated to a Specialisation and residual UE only, this does not count as overlap.
+
+### Capstone special rule
+
+Implement the capstone lock:
+
+If EE4002D or EE4002R is double-counted between Common Curriculum and a Specialisation, then that entire 8-unit overlap budget is consumed, and no further technical elective may be double-counted for that same Specialisation.
+
+This applies to:
+
+* SPT, where satellite-related capstone is compulsory in the standard path
+* Robotics, if robotics-related capstone is used
+* IoT, if IoT-related capstone is used
+* MQM, if MQM-related capstone is used
+
+Also implement:
+
+* If capstone is used to fulfil SPT, IoT, Rbt, or MQM, then no SEP courses may be mapped to that respective Specialisation.
+
+### SEP rules
+
+Support SEP-mapped course attempts.
+
+Each SEP attempt may have:
+
+* original overseas course code
+* mapped NUS equivalent
+* approved target requirements
+* units
+* approval status
+
+Implement these constraints:
+
+* For Major TE:
+
+  * At least one TE, either EE3xxxC or EE4xxx, must be completed at NUS.
+  * At most one SEP-mapped EE3xxxC/EE4xxx may be used for Major TE.
+* For Specialisations:
+
+  * At most 8 units of unique SEP courses may be mapped per Specialisation.
+  * A SEP course approved for one Specialisation should not be mapped again to another Specialisation or Minor.
+  * Since minor is out of scope, still implement the data structure generally, but only test cross-specialisation conflict.
+  * If capstone is used for SPT, IoT, Rbt, or MQM, no SEP courses may be mapped to that same Specialisation.
+
+### Specialisations to model
+
+Create one YAML file per Specialisation.
+
+Implement at least these structures:
+
+#### Advanced Electronics, AE
+
+Core:
+
+* EE3408C
+* EE3431C
+
+Electives:
+
+* Choose at least 3 from AE elective pool.
+
+#### Industry 4.0
+
+Core:
+
+* EE3331C or ME3142
+* EE3306 or ME3163
+
+Electives:
+
+* Choose at least 3 from Industry 4.0 elective pool.
+
+#### Internet of Things, IoT
+
+Core:
+
+* CS3237
+* EE4211
+* EE4409
+
+Electives:
+
+* Choose at least 2 electives or 8 units equivalent from IoT elective pool.
+* Include IoT-related EE4002D/EE4002R, CP4106, CG4002 as topic-tagged project options.
+
+#### Robotics, Rbt
+
+Alternative paths:
+
+Path 1:
+
+* 12 units from Robotics elective basket
+* plus a final-year capstone with topic tag `robotics`
+
+Path 2:
+
+* 20 units from Robotics elective basket
+
+The Robotics track grouping is advisory only. Do not make it a hard requirement.
+
+#### Space Technology, SPT
+
+Alternative paths:
+
+Standard path:
+
+* EE3105
+* EE4002D or EE4002R with topic tag `satellite`
+* at least 2 SPT electives
+
+iDP replacement path:
+
+* This is only relevant if the student is in iDP.
+* For this prototype, model it but do not activate unless `student_flags: [IDP]` is present.
+* EE4002D may be replaced by another 8 units of recommended SPT technical electives.
+* EG4301 may be topic-related, but its units must not count toward SPT to avoid triple counting.
+
+#### Sustainable Electric Transportation, SET
+
+Core:
+
+* EE4502
+* EE4503
+* EE4513
+
+Electives:
+
+* Choose at least 2 from SET elective pool.
+
+#### Microelectronics and Quantum Materials, MQM
+
+Core:
+
+* EE2027
+* MLE2105
+
+Electives:
+
+* Choose at least 3 courses or 12 units equivalent from MQM elective pool.
+* Include related-area dissertation / EE4002D / EE4002R / approved two-semester research project as topic-tagged project options.
+
+Pay special attention to MQM because EE2027 is already an EE Major core course. If EE2027 is also allocated to MQM, it should consume 4 units of MQM overlap budget.
+
+## Allocation strategy
+
+Implement a simple allocation pipeline for now.
+
+Stage 1: Eligibility expansion
+
+For every course attempt, compute all eligible requirements and course pools.
+
+Stage 2: Trivial greedy allocation
+
+Use a deterministic, simple allocation priority:
+
+1. Fixed EE Major core
+2. EE2026/EE2028 major choice
+3. Common Curriculum capstone if present
+4. TC
+5. TE
+6. Selected Specialisations
+7. residual UE
+
+Keep the greedy allocator intentionally simple and explainable. Do not try to optimise globally yet.
+
+Stage 3: Manual allocation override
+
+After greedy allocation, allow exporting an intermediate editable YAML file:
+
+```bash
+degree-auditor plan-allocation \
+  --config configs/nus_ee_ay24_jc \
+  --transcript examples/transcripts/robotics_with_capstone.yaml \
+  --out tmp/allocation.yaml
+```
+
+Then allow the user to edit `tmp/allocation.yaml` and run:
+
+```bash
+degree-auditor audit \
+  --config configs/nus_ee_ay24_jc \
+  --transcript examples/transcripts/robotics_with_capstone.yaml \
+  --allocation tmp/allocation.yaml
+```
+
+Manual allocation should override greedy allocation, but constraints must still be evaluated. Invalid manual allocations should produce clear errors or failed constraint results.
+
+## CLI requirements
+
+Implement these commands:
+
+```bash
+degree-auditor validate-config --config configs/nus_ee_ay24_jc
+
+degree-auditor expand-eligibility \
+  --config configs/nus_ee_ay24_jc \
+  --transcript examples/transcripts/simple_completed.yaml
+
+degree-auditor plan-allocation \
+  --config configs/nus_ee_ay24_jc \
+  --transcript examples/transcripts/simple_completed.yaml \
+  --out tmp/allocation.yaml
+
+degree-auditor audit \
+  --config configs/nus_ee_ay24_jc \
+  --transcript examples/transcripts/simple_completed.yaml
+
+degree-auditor audit \
+  --config configs/nus_ee_ay24_jc \
+  --transcript examples/transcripts/simple_completed.yaml \
+  --allocation tmp/allocation.yaml \
+  --format json
+
+degree-auditor list-requirements --config configs/nus_ee_ay24_jc
+
+degree-auditor list-specialisations --config configs/nus_ee_ay24_jc
+```
+
+Output formats:
+
+* `text`
+* `json`
+* optionally `yaml`
+
+The text output should use Rich and be easy to read in the terminal.
+
+## Audit report requirements
+
+The report should show:
+
+* Overall status
+* Major status
+* TC status
+* TE status
+* Selected Specialisation status
+* SEP rule status
+* Overlap budget usage per Specialisation
+* Capstone lock status
+* Manual allocation warnings
+* Missing courses / units
+* Failed constraints
+* Source references for each failed or important rule
+
+Example report style:
+
+```text
+NUS EE AY24 JC Degree Audit
+
+Major Programme: PARTIAL
+  ✓ EE1111A
+  ✓ EE2111A
+  ✓ EE2012
+  ✓ EE2022
+  ✓ EE2023
+  ✓ EE2027
+  ✓ PC2020
+  ✓ Digital/Microcontroller choice: EE2028
+  ✗ EE Technical Electives: 1 / 2 completed
+
+Technical Courses: PASS
+  ✓ EE3331C
+  ✓ EE3408C
+  ✓ EE2026
+
+Technical Electives: FAIL
+  ✓ EE4308
+  ✗ Need 1 more eligible TE
+  ! EE3331C cannot be used for both TC and TE
+
+Robotics Specialisation: PARTIAL
+  Path selected: RBT_WITH_CAPSTONE
+  Robotics electives: 8 / 12 units
+  Capstone: EE4002D, topic=robotics
+  Overlap: 8 / 8 units used
+  Distinct units: 12 / 12
+  SEP mapped units: 0 / 0 allowed because capstone is used
+```
+
+## Test cases
+
+Generate a complete structured test suite.
+
+Each test case must have:
+
+```yaml
+id: string
+description: human-readable description
+transcript: ...
+manual_allocation: optional
+expected:
+  pass: true | false
+  satisfied_requirements: []
+  failed_requirements: []
+  failed_constraints: []
+  warnings: []
+```
+
+Implement these test cases at minimum:
+
+1. `major_core_pass_basic`
+
+   * Student completed all fixed EE major core courses, one of EE2026/EE2028, and 2 valid TEs.
+   * Expected: major passes.
+
+2. `tc_te_mutual_exclusion_fail`
+
+   * Same EE3xxxC course manually allocated to both TC and TE.
+   * Expected: fail TC/TE mutual exclusion.
+
+3. `ee2026_ee2028_choice_tc_success`
+
+   * EE2028 used for Major, EE2026 used for TC.
+   * Expected: valid.
+
+4. `ee3031_not_te_fail`
+
+   * EE3031 manually allocated as TE.
+   * Expected: fail because EE3031 only fulfils UE for AY2021-AY2024 intake.
+
+5. `ee3033_not_te_fail`
+
+   * EE3033 manually allocated as TE.
+   * Expected: fail.
+
+6. `ae_core_overlap_with_tc_within_budget`
+
+   * EE3408C and EE3431C allocated to AE core; one of them also allocated to TC.
+   * Expected: allowed if AE overlap is within 8 units.
+
+7. `ae_core_tc_te_conflict`
+
+   * EE3408C allocated to AE core, TC, and TE.
+   * Expected: fail because TC and TE are mutually exclusive.
+
+8. `robotics_coursework_only_pass`
+
+   * Student completes 20 units from Robotics elective basket.
+   * Expected: Robotics passes by coursework-only path.
+
+9. `robotics_capstone_path_pass`
+
+   * Student completes 12 units Robotics electives plus EE4002D topic_tag=robotics.
+   * Expected: Robotics passes by capstone path.
+
+10. `robotics_capstone_overlap_lock_fail`
+
+    * EE4002D double-counted Common Curriculum + Robotics, and another Robotics elective also double-counted with TE.
+    * Expected: fail because capstone consumes the full 8-unit overlap budget and forbids further double-counting for that specialisation.
+
+11. `spt_standard_pass`
+
+    * EE3105 + satellite-related EE4002D/R + 2 SPT electives.
+    * Expected: SPT passes.
+
+12. `spt_capstone_sep_forbidden_fail`
+
+    * SPT uses satellite capstone and also maps SEP course to SPT.
+    * Expected: fail because SEP mapping is forbidden for that specialisation when capstone is used.
+
+13. `mqm_ee2027_overlap_budget`
+
+    * EE2027 is allocated to EE Major and MQM core.
+    * Expected: MQM overlap budget consumes 4 units.
+
+14. `mqm_overlap_exceeds_budget_fail`
+
+    * EE2027 overlaps with EE Major and EE4002D overlaps with Common Curriculum for MQM.
+    * Expected: fail if total MQM overlap exceeds 8 units or violates capstone lock.
+
+15. `sep_te_one_nus_one_sep_pass`
+
+    * One TE completed at NUS and one SEP-mapped EE4xxx TE.
+    * Expected: TE SEP rule passes.
+
+16. `sep_te_all_sep_fail`
+
+    * Both TEs are SEP mapped.
+    * Expected: fail because at least one TE must be done at NUS.
+
+17. `sep_specialisation_max_8_units_pass`
+
+    * One 4-unit or 8-unit SEP course mapped to one Specialisation.
+    * Expected: pass if within 8 units.
+
+18. `sep_specialisation_over_8_units_fail`
+
+    * More than 8 units SEP mapped to one Specialisation.
+    * Expected: fail.
+
+19. `sep_same_course_two_specialisations_fail`
+
+    * Same SEP course mapped to Robotics and IoT.
+    * Expected: fail.
+
+20. `ue_residual_does_not_consume_overlap`
+
+    * A specialisation course is allocated to the specialisation and residual UE only.
+    * Expected: no specialisation overlap budget consumed.
+
+The tests must be runnable with:
+
+```bash
+pytest
+```
+
+## README requirements
+
+Write a README explaining:
+
+* Project scope
+* Warning that this is not official academic advice
+* How to install
+* How to run the CLI
+* How to write a transcript YAML
+* How to write manual allocation YAML
+* How config folders are merged
+* How source references work
+* Known limitations
+* Future work:
+
+  * CP-SAT / ILP allocation optimiser
+  * Streamlit UI
+  * NUSMods API import
+  * PDF-to-YAML extraction pipeline
+  * More cohorts and programmes
+  * 2nd major / minor support
+
+## Quality bar
+
+The result should be a working prototype with passing tests.
+
+Prioritise:
+
+1. Correct modelling of TC vs TE separation.
+2. Correct modelling of specialisation overlap budget.
+3. Correct modelling of capstone lock.
+4. Correct modelling of SEP mapping rules.
+5. Good test coverage.
+6. Readable YAML configs.
+7. Clear CLI reports.
+
+Avoid overengineering.
+
+Use type hints throughout.
+
+Include comments only where they explain curriculum-specific logic.
+
+When a PDF rule is ambiguous, create a TODO note and a failing or xfail test if appropriate, rather than hiding the ambiguity.
