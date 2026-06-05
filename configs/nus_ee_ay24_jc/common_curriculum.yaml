@@ -1,0 +1,25 @@
+requirements:
+  - id: CDE_COMMON_CURRICULUM
+    description: CDE Common Curriculum placeholder for AY2024 JC/non-poly EE intake.
+    requirement_type: all_of
+    units: 60
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Common Curriculum CDE 60 units
+      notes: Pass 3 models this structurally only; Common Curriculum satisfaction is not evaluated yet.
+  - id: CDE_CAPSTONE
+    description: Common Curriculum capstone placeholder for EE4002D or EE4002R.
+    requirement_type: project_option
+    courses:
+      - EE4002D
+      - EE4002R
+    units: 8
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 1
+      section: Double-counting of Specialisation and EE Major requirement
+      quote: EE4002D/R (8 Units)
+      notes: Capstone double-counting rules are intentionally deferred to a later pass.
+

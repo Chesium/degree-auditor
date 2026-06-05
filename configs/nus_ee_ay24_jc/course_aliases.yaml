@@ -1,0 +1,32 @@
+course_aliases:
+  - id: CG1111_TO_EE1111A
+    alias: CG1111
+    canonical: EE1111A
+    description: CG1111 is treated as equivalent to EE1111A for shared CDE/ECE first-year contexts.
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Major Requirements
+      quote: EE1111A
+      notes: Alias included for prototype course matching; exact equivalence should be verified in later data-cleaning passes.
+  - id: CG1112_TO_EE2111A
+    alias: CG1112
+    canonical: EE2111A
+    description: CG1112 is treated as equivalent to EE2111A where prerequisite text lists EE/CG alternatives.
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 10
+      section: Sustainable Electric Transportation
+      quote: EE1111A/CG1111 and EE2111A/CG1112
+      notes: Alias supports matching prerequisite-style alternatives in source text.
+  - id: EE4802_IE4213_ALIAS
+    alias: IE4213
+    canonical: EE4802
+    description: IE4213 appears as an alternative listing for EE4802 Learning from Data.
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Robotics / Industry 4.0 elective baskets
+      quote: EE4802 / IE4213 Learning from Data
+      notes: Alias supports shared elective basket matching.
+

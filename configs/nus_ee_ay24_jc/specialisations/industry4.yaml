@@ -1,0 +1,70 @@
+requirements:
+  - id: IND4_CORE_CONTROL
+    description: Industry 4.0 control core choice.
+    requirement_type: choice
+    courses:
+      - EE3331C
+      - ME3142
+    min_count: 1
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Industry 4.0
+      quote: EE3331C or ME3142
+      notes: Structural core choice only in Pass 3.
+  - id: IND4_CORE_AUTOMATION
+    description: Industry 4.0 automation/manufacturing core choice.
+    requirement_type: choice
+    courses:
+      - EE3306
+      - ME3163
+    min_count: 1
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Industry 4.0
+      quote: EE3306 or ME3163
+      notes: Structural core choice only in Pass 3.
+  - id: IND4_ELECTIVES
+    description: Choose at least three Industry 4.0 electives.
+    requirement_type: choose_count
+    pool_id: INDUSTRY4_ELECTIVE_POOL
+    min_count: 3
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Industry 4.0
+      quote: Industry 4.0 Electives Choose at least 3
+      notes: Structural only in Pass 3.
+specialisations:
+  - id: IND4
+    description: Industry 4.0
+    total_units: 20
+    max_overlap_units: 8
+    min_distinct_units: 12
+    requirement_ids:
+      - IND4_CORE_CONTROL
+      - IND4_CORE_AUTOMATION
+      - IND4_ELECTIVES
+    course_pool_ids:
+      - INDUSTRY4_ELECTIVE_POOL
+    paths:
+      - id: IND4_STANDARD
+        description: Industry 4.0 core choices plus elective path.
+        requirement_ids:
+          - IND4_CORE_CONTROL
+          - IND4_CORE_AUTOMATION
+          - IND4_ELECTIVES
+        source_ref:
+          document: ECE_Specialisations_AY2025_7July2025.pdf
+          page: null
+          section: Industry 4.0
+          quote: Industry 4.0 Specialisation
+          notes: Standard path modeled structurally only.
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Industry 4.0
+      quote: Industry 4.0 Specialisation
+      notes: Source page should be refined from PDF table extraction.
+

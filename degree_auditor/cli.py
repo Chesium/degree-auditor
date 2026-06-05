@@ -75,6 +75,33 @@ def list_requirements_command(config: ConfigOption) -> None:
     console.print(table)
 
 
+@app.command("list-specialisations")
+def list_specialisations_command(config: ConfigOption) -> None:
+    loaded = load_config(config)
+    table = Table(title="Specialisations")
+    table.add_column("ID")
+    table.add_column("Description")
+    table.add_column("Units")
+    table.add_column("Overlap")
+    table.add_column("Distinct")
+    table.add_column("Paths")
+    table.add_column("Source")
+    for specialisation in loaded.specialisations:
+        source = specialisation.source_ref.document
+        if specialisation.source_ref.page is not None:
+            source = f"{source}:p{specialisation.source_ref.page}"
+        table.add_row(
+            specialisation.id,
+            specialisation.description,
+            str(specialisation.total_units),
+            str(specialisation.max_overlap_units),
+            str(specialisation.min_distinct_units),
+            ", ".join(path.id for path in specialisation.paths) or "-",
+            source,
+        )
+    console.print(table)
+
+
 @app.command("audit")
 def audit_command(
     config: ConfigOption,

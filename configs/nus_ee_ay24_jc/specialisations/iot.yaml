@@ -1,0 +1,73 @@
+requirements:
+  - id: IOT_CORE
+    description: Internet of Things compulsory core courses.
+    requirement_type: all_of
+    courses:
+      - CS3237
+      - EE4211
+      - EE4409
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Internet of Things
+      quote: Core CS3237; EE4211; EE4409
+      notes: Structural only in Pass 3.
+  - id: IOT_ELECTIVES
+    description: Choose at least two electives or 8 units equivalent from the IoT elective pool.
+    requirement_type: choose_units
+    pool_id: IOT_ELECTIVE_POOL
+    min_count: 2
+    units: 8
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Internet of Things
+      quote: Choose at least 2 electives, or total 8 Units equivalent from the following
+      notes: Structural only in Pass 3.
+  - id: IOT_PROJECT_OPTIONS
+    description: IoT-related project options.
+    requirement_type: project_option
+    courses:
+      - EE4002D
+      - EE4002R
+      - CP4106
+      - CG4002
+    topic_tags:
+      - iot
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Internet of Things
+      quote: EE4002D/EE4002R Design Capstone/Research Capstone - IoT related, or CP4106, or CG4002
+      notes: Topic-tag enforcement is deferred to later passes.
+specialisations:
+  - id: IOT
+    description: Internet of Things
+    total_units: 20
+    max_overlap_units: 8
+    min_distinct_units: 12
+    requirement_ids:
+      - IOT_CORE
+      - IOT_ELECTIVES
+      - IOT_PROJECT_OPTIONS
+    course_pool_ids:
+      - IOT_ELECTIVE_POOL
+    paths:
+      - id: IOT_STANDARD
+        description: IoT core plus elective/project-option structure.
+        requirement_ids:
+          - IOT_CORE
+          - IOT_ELECTIVES
+        source_ref:
+          document: ECE_Specialisations_AY2025_7July2025.pdf
+          page: null
+          section: Internet of Things
+          quote: Internet of Things Specialisation
+          notes: Project options are modeled for later capstone handling.
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Internet of Things
+      quote: Internet of Things (IoT) Specialisation
+      notes: Source page should be refined from PDF table extraction.
+

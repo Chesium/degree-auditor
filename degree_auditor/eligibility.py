@@ -27,17 +27,18 @@ def eligible_requirement_ids(
     allocations: list[Allocation],
 ) -> list[str]:
     eligible: list[str] = []
-    if course.effective_code in {"EE2026", "EE2028"}:
+    canonical_code = canonical_course_code(config, course)
+    if canonical_code in {"EE2026", "EE2028"}:
         eligible.append(MAJOR_CHOICE_REQUIREMENT_ID)
-    if is_tc_eligible(config, course.effective_code, allocations):
+    if is_tc_eligible(config, canonical_code, allocations):
         eligible.append(TC_REQUIREMENT_ID)
-    if is_te_eligible(config, course.effective_code):
+    if is_te_eligible(config, canonical_code):
         eligible.append(TE_REQUIREMENT_ID)
     return eligible
 
 
 def is_tc_eligible(config: DegreeAuditConfig, course_code: str, allocations: list[Allocation]) -> bool:
-    normalized = course_code.upper().strip()
+    normalized = canonical_code(config, course_code)
     pool = config.pool_by_id("EE24JC_TC_POOL")
     if pool is None or not course_in_pool(normalized, pool):
         return False
@@ -49,7 +50,17 @@ def is_tc_eligible(config: DegreeAuditConfig, course_code: str, allocations: lis
 
 def is_te_eligible(config: DegreeAuditConfig, course_code: str) -> bool:
     pool = config.pool_by_id("EE24JC_TE_POOL")
-    return course_in_pool(course_code.upper().strip(), pool) if pool else False
+    return course_in_pool(canonical_code(config, course_code), pool) if pool else False
+
+
+def canonical_course_code(config: DegreeAuditConfig, course: CourseAttempt) -> str:
+    return canonical_code(config, course.effective_code)
+
+
+def canonical_code(config: DegreeAuditConfig, course_code: str) -> str:
+    normalized = course_code.upper().strip()
+    alias = config.alias_for(normalized)
+    return alias.canonical.upper().strip() if alias else normalized
 
 
 def course_in_pool(course_code: str, pool: CoursePool) -> bool:
@@ -70,6 +81,5 @@ def _pattern_matches(pattern: str, course_code: str) -> bool:
     normalized = pattern.upper().strip()
     if "X" not in normalized:
         return normalized == course_code
-    regex = "^" + re.escape(normalized).replace("X", r"\d") + "$"
+    regex = "^" + "".join(r"\d" if char == "X" else re.escape(char) for char in normalized) + "$"
     return re.match(regex, course_code) is not None
-

@@ -1,0 +1,140 @@
+course_pools:
+  - id: AE_ELECTIVE_POOL
+    description: Advanced Electronics elective basket.
+    includes:
+      - EE4409
+      - EE4415
+      - EE4435
+      - EE4436
+      - EE4437
+      - EE4438
+    excludes: []
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Advanced Electronics
+      quote: AE elective pool
+      notes: Basket captured structurally from the specialisation table; page-level extraction should be refined later.
+  - id: INDUSTRY4_ELECTIVE_POOL
+    description: Industry 4.0 elective basket.
+    includes:
+      - EE3801
+      - EE4211
+      - EE4212
+      - EE4216
+      - EE4218
+      - EE4308
+      - EE4309
+      - EE4311
+      - EE4312
+      - EE4315
+      - EE4704
+      - EE4707
+      - EE4802
+    excludes: []
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Industry 4.0
+      quote: Industry 4.0 elective basket
+      notes: Includes courses visible in the extracted basket text and related overlap table.
+  - id: IOT_ELECTIVE_POOL
+    description: Internet of Things elective basket.
+    includes:
+      - CS3244
+      - CS4222
+      - EE4204
+      - EE4216
+      - EE4218
+      - EE4002D
+      - EE4002R
+      - CP4106
+      - CG4002
+    excludes: []
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Internet of Things
+      quote: Choose at least 2 electives, or total 8 Units equivalent from the following
+      notes: Project options require topic tag iot when evaluated in later passes.
+  - id: RBT_ELECTIVE_POOL
+    description: Robotics elective basket.
+    includes:
+      - EE4211
+      - EE4212
+      - EE4216
+      - EE4218
+      - EE4308
+      - EE4309
+      - EE4311
+      - EE4312
+      - EE4315
+      - EE4704
+      - EE4707
+      - EE4802
+    excludes: []
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Robotics
+      quote: Robotics elective basket
+      notes: Robotics track grouping is advisory only and is not modeled as a hard requirement.
+  - id: SPT_ELECTIVE_POOL
+    description: Space Technology elective basket.
+    includes:
+      - EE3104C
+      - EE3131C
+      - EE3331C
+      - EE4101
+      - EE4110
+      - EE4212
+      - EE4503
+      - EE4505
+    excludes: []
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 8
+      section: Space Technology
+      quote: SPT Electives Choose at least 2 courses from the following
+      notes: Basket includes visible extracted courses and placeholder entries for later refinement.
+  - id: SET_ELECTIVE_POOL
+    description: Sustainable Electric Transportation elective basket.
+    includes:
+      - EE4501
+      - EE4505
+      - EE4511
+      - EE4512
+      - EE4520
+    excludes: []
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 10
+      section: Sustainable Electric Transportation
+      quote: SET Electives Choose at least 2 courses from the following
+      notes: Basket includes visible extracted courses and placeholders for later source refinement.
+  - id: MQM_ELECTIVE_POOL
+    description: Microelectronics and Quantum Materials elective basket.
+    includes:
+      - EE3431C
+      - EE4409
+      - EE4435
+      - EE4437
+      - EE4438
+      - MLE3105
+      - MLE4201
+      - MLE4207
+      - EE4436
+      - MLE4219
+      - MLE4220
+      - MLE4222
+      - MLE4101B
+      - EE4002D
+      - EE4002R
+    excludes: []
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 10
+      section: Microelectronics and Quantum Materials
+      quote: MQM Electives Choose at least 3 courses (12 units equivalent) from the following
+      notes: Related-area project options require topic tags when evaluated in later passes.
+

@@ -89,11 +89,20 @@ class Requirement(StrictModel):
     id: str
     description: str
     source_ref: SourceRef
-    requirement_type: Literal["course_list", "choice", "pool_count"]
+    requirement_type: Literal[
+        "course_list",
+        "choice",
+        "pool_count",
+        "all_of",
+        "choose_count",
+        "choose_units",
+        "project_option",
+    ]
     courses: list[str] = Field(default_factory=list)
     pool_id: str | None = None
     min_count: int | None = None
     units: int | None = None
+    topic_tags: list[str] = Field(default_factory=list)
     override: bool = False
 
     @field_validator("courses")
@@ -110,6 +119,14 @@ class RequirementGroup(StrictModel):
     override: bool = False
 
 
+class SpecialisationPath(StrictModel):
+    id: str
+    description: str
+    source_ref: SourceRef
+    requirement_ids: list[str] = Field(default_factory=list)
+    activation_flags: list[str] = Field(default_factory=list)
+
+
 class Specialisation(StrictModel):
     id: str
     description: str
@@ -118,6 +135,9 @@ class Specialisation(StrictModel):
     max_overlap_units: int = 8
     min_distinct_units: int = 12
     requirement_ids: list[str] = Field(default_factory=list)
+    course_pool_ids: list[str] = Field(default_factory=list)
+    paths: list[SpecialisationPath] = Field(default_factory=list)
+    notes: str | None = None
     override: bool = False
 
 
@@ -176,9 +196,27 @@ class DegreeAuditConfig(StrictModel):
     @model_validator(mode="after")
     def validate_referenced_ids(self) -> "DegreeAuditConfig":
         pools = {pool.id for pool in self.course_pools}
+        requirements = {requirement.id for requirement in self.requirements}
         for requirement in self.requirements:
             if requirement.pool_id and requirement.pool_id not in pools:
                 raise ValueError(f"Requirement {requirement.id} references unknown pool {requirement.pool_id}")
+        for group in self.requirement_groups:
+            for requirement_id in group.requirement_ids:
+                if requirement_id not in requirements:
+                    raise ValueError(f"Requirement group {group.id} references unknown requirement {requirement_id}")
+        for specialisation in self.specialisations:
+            for pool_id in specialisation.course_pool_ids:
+                if pool_id not in pools:
+                    raise ValueError(f"Specialisation {specialisation.id} references unknown pool {pool_id}")
+            for requirement_id in specialisation.requirement_ids:
+                if requirement_id not in requirements:
+                    raise ValueError(f"Specialisation {specialisation.id} references unknown requirement {requirement_id}")
+            for path in specialisation.paths:
+                for requirement_id in path.requirement_ids:
+                    if requirement_id not in requirements:
+                        raise ValueError(
+                            f"Specialisation path {path.id} references unknown requirement {requirement_id}"
+                        )
         return self
 
     def requirement_by_id(self, requirement_id: str) -> Requirement | None:
@@ -189,3 +227,7 @@ class DegreeAuditConfig(StrictModel):
 
     def constraint_by_id(self, constraint_id: str) -> Constraint | None:
         return next((constraint for constraint in self.constraints if constraint.id == constraint_id), None)
+
+    def alias_for(self, course_code: str) -> CourseAlias | None:
+        normalized = course_code.upper().strip()
+        return next((alias for alias in self.course_aliases if alias.alias.upper().strip() == normalized), None)

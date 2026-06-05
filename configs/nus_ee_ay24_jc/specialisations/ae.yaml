@@ -1,0 +1,54 @@
+requirements:
+  - id: AE_CORE
+    description: Advanced Electronics core courses.
+    requirement_type: all_of
+    courses:
+      - EE3408C
+      - EE3431C
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Advanced Electronics
+      quote: Core EE3408C Integrated Analog Design; EE3431C Microelectronics Materials and Devices
+      notes: Page-level citation should be refined from the PDF table in a later documentation pass.
+  - id: AE_ELECTIVES
+    description: Choose at least three Advanced Electronics electives.
+    requirement_type: choose_count
+    pool_id: AE_ELECTIVE_POOL
+    min_count: 3
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Advanced Electronics
+      quote: AE Electives Choose at least 3
+      notes: Structural only in Pass 3.
+specialisations:
+  - id: AE
+    description: Advanced Electronics
+    total_units: 20
+    max_overlap_units: 8
+    min_distinct_units: 12
+    requirement_ids:
+      - AE_CORE
+      - AE_ELECTIVES
+    course_pool_ids:
+      - AE_ELECTIVE_POOL
+    paths:
+      - id: AE_STANDARD
+        description: Advanced Electronics core plus elective path.
+        requirement_ids:
+          - AE_CORE
+          - AE_ELECTIVES
+        source_ref:
+          document: ECE_Specialisations_AY2025_7July2025.pdf
+          page: null
+          section: Advanced Electronics
+          quote: Specialisation 1 Advanced Electronics
+          notes: Standard path modeled structurally only.
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: null
+      section: Advanced Electronics
+      quote: Specialisation 1 Advanced Electronics (AE)
+      notes: Source page should be refined from PDF table extraction.
+

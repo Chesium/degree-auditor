@@ -1,0 +1,95 @@
+requirements:
+  - id: SPT_CORE
+    description: Space Technology compulsory course.
+    requirement_type: all_of
+    courses:
+      - EE3105
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 8
+      section: Space Technology
+      quote: Core EE3105 Beyond Sky - New Space Technology and Application
+      notes: Structural only in Pass 3.
+  - id: SPT_SATELLITE_CAPSTONE
+    description: Satellite-related EE4002D or EE4002R capstone.
+    requirement_type: project_option
+    courses:
+      - EE4002D
+      - EE4002R
+    units: 8
+    topic_tags:
+      - satellite
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 8
+      section: Space Technology
+      quote: EE4002D Design Capstone or EE4002R Research Capstone (on satellite-related projects) (8 Units)
+      notes: Capstone lock evaluation is deferred.
+  - id: SPT_ELECTIVES
+    description: Choose at least two Space Technology electives.
+    requirement_type: choose_count
+    pool_id: SPT_ELECTIVE_POOL
+    min_count: 2
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 8
+      section: Space Technology
+      quote: SPT Electives Choose at least 2 courses from the following
+      notes: Structural only in Pass 3.
+  - id: SPT_IDP_REPLACEMENT_ELECTIVES
+    description: iDP replacement path recommended SPT technical electives.
+    requirement_type: choose_units
+    pool_id: SPT_ELECTIVE_POOL
+    units: 16
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 8
+      section: Space Technology
+      quote: For students in the Innovation and Design Programme (iDP), EE4002D may be replaced by another 8 Units of Recommended Technical Electives
+      notes: Activated only when student_flags includes IDP in later passes.
+specialisations:
+  - id: SPT
+    description: Space Technology
+    total_units: 20
+    max_overlap_units: 8
+    min_distinct_units: 12
+    requirement_ids:
+      - SPT_CORE
+      - SPT_SATELLITE_CAPSTONE
+      - SPT_ELECTIVES
+      - SPT_IDP_REPLACEMENT_ELECTIVES
+    course_pool_ids:
+      - SPT_ELECTIVE_POOL
+    paths:
+      - id: SPT_STANDARD
+        description: EE3105, satellite-related capstone, and at least two SPT electives.
+        requirement_ids:
+          - SPT_CORE
+          - SPT_SATELLITE_CAPSTONE
+          - SPT_ELECTIVES
+        source_ref:
+          document: ECE_Specialisations_AY2025_7July2025.pdf
+          page: 8
+          section: Space Technology
+          quote: EE3105; EE4002D or EE4002R satellite-related projects; at least 2 SPT electives
+          notes: Standard path modeled structurally only.
+      - id: SPT_IDP_REPLACEMENT
+        description: iDP replacement path using additional recommended SPT technical electives.
+        requirement_ids:
+          - SPT_CORE
+          - SPT_IDP_REPLACEMENT_ELECTIVES
+        activation_flags:
+          - IDP
+        source_ref:
+          document: ECE_Specialisations_AY2025_7July2025.pdf
+          page: 8
+          section: Space Technology
+          quote: For students in the Innovation and Design Programme (iDP), EE4002D may be replaced
+          notes: EG4301 topic relevance is not counted toward SPT in later evaluation.
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 8
+      section: Space Technology
+      quote: Specialisation 5 Space Technology (SPT)
+      notes: Structural only in Pass 3.
+

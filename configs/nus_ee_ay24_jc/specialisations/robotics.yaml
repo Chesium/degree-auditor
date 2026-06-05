@@ -1,0 +1,77 @@
+requirements:
+  - id: RBT_ELECTIVES_12_UNITS
+    description: Robotics capstone path elective basket component.
+    requirement_type: choose_units
+    pool_id: RBT_ELECTIVE_POOL
+    units: 12
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 8
+      section: Robotics
+      quote: "Path 1: 12 units from Robotics elective basket plus final-year capstone"
+      notes: Structural only in Pass 3.
+  - id: RBT_ELECTIVES_20_UNITS
+    description: Robotics coursework-only elective basket component.
+    requirement_type: choose_units
+    pool_id: RBT_ELECTIVE_POOL
+    units: 20
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 8
+      section: Robotics
+      quote: "Path 2: 20 units from Robotics elective basket"
+      notes: Structural only in Pass 3.
+  - id: RBT_CAPSTONE
+    description: Robotics-related final-year capstone project option.
+    requirement_type: project_option
+    courses:
+      - EE4002D
+      - EE4002R
+    topic_tags:
+      - robotics
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 8
+      section: Robotics
+      quote: final year project on robotics
+      notes: Topic-tag enforcement is deferred to later passes.
+specialisations:
+  - id: RBT
+    description: Robotics
+    total_units: 20
+    max_overlap_units: 8
+    min_distinct_units: 12
+    requirement_ids:
+      - RBT_ELECTIVES_12_UNITS
+      - RBT_ELECTIVES_20_UNITS
+      - RBT_CAPSTONE
+    course_pool_ids:
+      - RBT_ELECTIVE_POOL
+    paths:
+      - id: RBT_WITH_CAPSTONE
+        description: 12 units from Robotics electives plus robotics-related capstone.
+        requirement_ids:
+          - RBT_ELECTIVES_12_UNITS
+          - RBT_CAPSTONE
+        source_ref:
+          document: ECE_Specialisations_AY2025_7July2025.pdf
+          page: 8
+          section: Robotics
+          quote: "Path 1: 12 units from Robotics elective basket plus a final-year capstone"
+          notes: Capstone lock evaluation is deferred.
+      - id: RBT_COURSEWORK_ONLY
+        description: 20 units from Robotics elective basket.
+        requirement_ids:
+          - RBT_ELECTIVES_20_UNITS
+        source_ref:
+          document: ECE_Specialisations_AY2025_7July2025.pdf
+          page: 8
+          section: Robotics
+          quote: "Path 2: 20 units from Robotics elective basket"
+          notes: Robotics track grouping is advisory only.
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 8
+      section: Robotics
+      quote: Robotics Specialisation (Rbt)
+      notes: Structural only in Pass 3.

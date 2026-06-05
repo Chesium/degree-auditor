@@ -1,0 +1,71 @@
+requirements:
+  - id: MQM_CORE
+    description: Microelectronics and Quantum Materials compulsory core courses.
+    requirement_type: all_of
+    courses:
+      - EE2027
+      - MLE2105
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 10
+      section: Microelectronics and Quantum Materials
+      quote: Core EE2027 Electronic Circuits; MLE2105 Electronic Properties of Materials
+      notes: EE2027 overlap with EE Major is evaluated in a later pass.
+  - id: MQM_ELECTIVES
+    description: Choose at least three courses or 12 units equivalent from the MQM elective pool.
+    requirement_type: choose_units
+    pool_id: MQM_ELECTIVE_POOL
+    min_count: 3
+    units: 12
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 10
+      section: Microelectronics and Quantum Materials
+      quote: MQM Electives Choose at least 3 courses (12 units equivalent) from the following
+      notes: Structural only in Pass 3.
+  - id: MQM_PROJECT_OPTIONS
+    description: MQM related-area dissertation, capstone, or approved two-semester research project options.
+    requirement_type: project_option
+    courses:
+      - MLE4101B
+      - EE4002D
+      - EE4002R
+    topic_tags:
+      - mqm
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 10
+      section: Microelectronics and Quantum Materials
+      quote: MLE4101B B.Eng. Dissertation in related area / EE4002D / EE4002R / equivalent two semester research project
+      notes: Topic-tag and approval handling are deferred to later passes.
+specialisations:
+  - id: MQM
+    description: Microelectronics and Quantum Materials
+    total_units: 20
+    max_overlap_units: 8
+    min_distinct_units: 12
+    requirement_ids:
+      - MQM_CORE
+      - MQM_ELECTIVES
+      - MQM_PROJECT_OPTIONS
+    course_pool_ids:
+      - MQM_ELECTIVE_POOL
+    paths:
+      - id: MQM_STANDARD
+        description: MQM core plus elective/project-option structure.
+        requirement_ids:
+          - MQM_CORE
+          - MQM_ELECTIVES
+        source_ref:
+          document: ECE_Specialisations_AY2025_7July2025.pdf
+          page: 10
+          section: Microelectronics and Quantum Materials
+          quote: Specialisation 7 Microelectronics and Quantum Materials (MQM)
+          notes: Standard path modeled structurally only.
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 10
+      section: Microelectronics and Quantum Materials
+      quote: Specialisation 7 Microelectronics and Quantum Materials (MQM)
+      notes: Structural only in Pass 3.
+

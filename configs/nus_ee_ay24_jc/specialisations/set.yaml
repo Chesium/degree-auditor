@@ -1,0 +1,55 @@
+requirements:
+  - id: SET_CORE
+    description: Sustainable Electric Transportation compulsory core courses.
+    requirement_type: all_of
+    courses:
+      - EE4502
+      - EE4503
+      - EE4513
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 10
+      section: Sustainable Electric Transportation
+      quote: Core EE4502; EE4503; EE4513
+      notes: Structural only in Pass 3.
+  - id: SET_ELECTIVES
+    description: Choose at least two Sustainable Electric Transportation electives.
+    requirement_type: choose_count
+    pool_id: SET_ELECTIVE_POOL
+    min_count: 2
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 10
+      section: Sustainable Electric Transportation
+      quote: SET Electives Choose at least 2 courses from the following
+      notes: Structural only in Pass 3.
+specialisations:
+  - id: SET
+    description: Sustainable Electric Transportation
+    total_units: 20
+    max_overlap_units: 8
+    min_distinct_units: 12
+    requirement_ids:
+      - SET_CORE
+      - SET_ELECTIVES
+    course_pool_ids:
+      - SET_ELECTIVE_POOL
+    paths:
+      - id: SET_STANDARD
+        description: SET core plus elective path.
+        requirement_ids:
+          - SET_CORE
+          - SET_ELECTIVES
+        source_ref:
+          document: ECE_Specialisations_AY2025_7July2025.pdf
+          page: 10
+          section: Sustainable Electric Transportation
+          quote: Specialisation 6 Sustainable Electric Transportation (SET)
+          notes: Standard path modeled structurally only.
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 10
+      section: Sustainable Electric Transportation
+      quote: Specialisation 6 Sustainable Electric Transportation (SET)
+      notes: Structural only in Pass 3.
+
