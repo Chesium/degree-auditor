@@ -1,0 +1,49 @@
+requirements:
+  - id: EE24JC_TC
+    description: Complete at least three Technical Courses in addition to the EE Technical Elective rule.
+    requirement_type: pool_count
+    pool_id: EE24JC_TC_POOL
+    min_count: 3
+    units: 12
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Technical Courses
+      quote: "AY24 intake (JC/ non-poly): Read 3 T.C"
+      notes: TC is separate from TE and the three TCs are in addition to two TEs.
+
+course_pools:
+  - id: EE24JC_TC_POOL
+    description: Technical Course pool for AY2024 JC/non-poly EE intake.
+    includes:
+      - EE2026
+      - EE2028
+      - EE3033
+      - EE3131C
+      - EE3408C
+      - EE3331C
+      - EE3431C
+      - EE3731C
+      - EE3104C
+    excludes: []
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Technical Courses
+      quote: EE2026 or EE2028 (whichever not taken to fulfil EE Major); EE3033; Extended Core EE3131C, EE3408C, EE3331C, EE3431C, EE3731C, EE3104C
+      notes: EE3033 is effective from Sem 2 AY2025/26.
+  - id: EE24JC_TE_POOL
+    description: Technical Elective pool for AY2024 JC/non-poly EE intake.
+    includes:
+      - EE4xxx
+      - EE3xxxC
+      - EE3xxx
+    excludes:
+      - EE3033
+      - EE3031
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Major Requirements
+      quote: Any combination of Technical elective EE4xxx, Extended Core EE3xxxC, EE3xxx (does not include EE3033)
+      notes: EE3031 can only fulfil UE for AY2021-AY2024 intake, not TE.

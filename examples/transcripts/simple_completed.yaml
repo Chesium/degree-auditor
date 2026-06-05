@@ -1,0 +1,41 @@
+courses:
+  - course_code: EE1111A
+    units: 4
+    status: completed
+  - course_code: EE2111A
+    units: 4
+    status: completed
+  - course_code: EE2012
+    units: 4
+    status: completed
+  - course_code: EE2022
+    units: 4
+    status: completed
+  - course_code: EE2023
+    units: 4
+    status: completed
+  - course_code: EE2027
+    units: 4
+    status: completed
+  - course_code: PC2020
+    units: 4
+    status: completed
+  - course_code: EE2028
+    units: 4
+    status: completed
+  - course_code: EE2026
+    units: 4
+    status: completed
+  - course_code: EE3331C
+    units: 4
+    status: completed
+  - course_code: EE3408C
+    units: 4
+    status: completed
+  - course_code: EE4308
+    units: 4
+    status: completed
+  - course_code: EE4211
+    units: 4
+    status: completed
+

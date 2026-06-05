@@ -1,0 +1,26 @@
+allocations:
+  - course_code: EE2028
+    requirement_id: EE24JC_MAJOR_DIGITAL_CHOICE
+    units: 4
+    allocation_role: primary
+  - course_code: EE2026
+    requirement_id: EE24JC_TC
+    units: 4
+    allocation_role: primary
+  - course_code: EE3331C
+    requirement_id: EE24JC_TC
+    units: 4
+    allocation_role: primary
+  - course_code: EE3408C
+    requirement_id: EE24JC_TC
+    units: 4
+    allocation_role: primary
+  - course_code: EE4308
+    requirement_id: EE24JC_TE
+    units: 4
+    allocation_role: primary
+  - course_code: EE4211
+    requirement_id: EE24JC_TE
+    units: 4
+    allocation_role: primary
+

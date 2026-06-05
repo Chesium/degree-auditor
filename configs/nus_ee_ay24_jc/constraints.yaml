@@ -1,0 +1,61 @@
+constraints:
+  - id: EE24JC_TC_MIN_3
+    description: AY2024 JC/non-poly intake must complete at least three Technical Courses.
+    constraint_type: min_count
+    params:
+      requirement_id: EE24JC_TC
+      min_count: 3
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Technical Courses
+      quote: Read 3 T.C
+      notes: Three TC is the minimum.
+  - id: EE24JC_TE_MIN_2
+    description: EE Major requires at least two Technical Electives.
+    constraint_type: min_count
+    params:
+      requirement_id: EE24JC_TE
+      min_count: 2
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Major Requirements
+      quote: Two EE Technical Electives
+      notes: The TC rule is in addition to this TE rule.
+  - id: EE24JC_TC_TE_MUTUAL_EXCLUSION
+    description: Technical Course and Technical Elective allocations must be mutually exclusive.
+    constraint_type: mutual_exclusion
+    params:
+      requirement_ids:
+        - EE24JC_TC
+        - EE24JC_TE
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Technical Courses
+      quote: Course counted towards fulfilling the TC requirement cannot be used to fulfil the Technical Elective (TE) requirement concurrently.
+      notes: Applies even when a course is eligible for both pools.
+  - id: EE24JC_TC_ELIGIBILITY
+    description: TC allocations must be from the TC pool, and EE2026 or EE2028 may count only when not used for the EE major choice.
+    constraint_type: tc_eligibility
+    params:
+      requirement_id: EE24JC_TC
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Technical Courses
+      quote: EE2026 or EE2028 (whichever not taken to fulfil EE Major)
+      notes: This is evaluated against the selected major digital/microcontroller choice.
+  - id: EE24JC_TE_ELIGIBILITY
+    description: TE allocations must match EE4xxx, EE3xxxC, or EE3xxx and must not be EE3033 or EE3031.
+    constraint_type: te_eligibility
+    params:
+      requirement_id: EE24JC_TE
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Major Requirements
+      quote: EE3xxx does not include EE3033; EE3031 can only fulfil UE for students of AY2021-AY2024 intake, not T.E rule.
+      notes: The prototype treats both exclusions as hard TE eligibility failures.
+
