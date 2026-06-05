@@ -173,6 +173,18 @@ class ConstraintResult(StrictModel):
     affected_courses: list[str] = Field(default_factory=list)
 
 
+class SpecialisationResult(StrictModel):
+    specialisation_id: str
+    status: Literal["PASS", "FAIL", "PARTIAL"]
+    selected_path_id: str | None = None
+    units_counted: int = 0
+    overlap_units: int = 0
+    distinct_units: int = 0
+    satisfied_requirements: list[str] = Field(default_factory=list)
+    failed_requirements: list[str] = Field(default_factory=list)
+    messages: list[str] = Field(default_factory=list)
+
+
 class AuditResult(StrictModel):
     overall_status: Literal["PASS", "FAIL", "PARTIAL"]
     requirement_statuses: dict[str, Literal["PASS", "FAIL", "PARTIAL"]] = Field(default_factory=dict)
@@ -180,6 +192,7 @@ class AuditResult(StrictModel):
     failed_requirements: list[str] = Field(default_factory=list)
     allocations: list[Allocation] = Field(default_factory=list)
     constraint_results: list[ConstraintResult] = Field(default_factory=list)
+    specialisation_results: list[SpecialisationResult] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
 
