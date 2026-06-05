@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
+from degree_auditor.allocation import FIXED_MAJOR_CORE_REQUIREMENT_ID
 from degree_auditor.eligibility import (
     MAJOR_CHOICE_REQUIREMENT_ID,
     TC_REQUIREMENT_ID,
@@ -10,7 +11,7 @@ from degree_auditor.eligibility import (
     is_te_eligible,
     major_choice_course,
 )
-from degree_auditor.models import Allocation, Constraint, ConstraintResult, CourseAttempt, DegreeAuditConfig, SourceRef
+from degree_auditor.models import Allocation, Constraint, ConstraintResult, CourseAttempt, DegreeAuditConfig
 
 
 def evaluate_constraints(
@@ -19,12 +20,55 @@ def evaluate_constraints(
     allocations: list[Allocation],
 ) -> list[ConstraintResult]:
     results: list[ConstraintResult] = []
+    results.extend(_evaluate_major_core(config, courses))
+    results.extend(_evaluate_major_choice(config, allocations))
     results.append(_evaluate_min_count(config, allocations, TC_REQUIREMENT_ID, "EE24JC_TC_MIN_3", minimum=3))
     results.append(_evaluate_min_count(config, allocations, TE_REQUIREMENT_ID, "EE24JC_TE_MIN_2", minimum=2))
     results.extend(_evaluate_tc_te_mutual_exclusion(config, allocations))
     results.extend(_evaluate_tc_eligibility(config, allocations))
     results.extend(_evaluate_te_eligibility(config, allocations))
     return results
+
+
+def _evaluate_major_core(config: DegreeAuditConfig, courses: list[CourseAttempt]) -> list[ConstraintResult]:
+    constraint = _constraint(config, "EE24JC_MAJOR_CORE_COMPLETE")
+    requirement = config.requirement_by_id(FIXED_MAJOR_CORE_REQUIREMENT_ID)
+    required_courses = set(requirement.courses if requirement else [])
+    transcript_courses = {course.effective_code for course in courses}
+    missing = sorted(required_courses - transcript_courses)
+    if not missing:
+        return [_result(constraint, True, "All fixed EE major core courses are present in the transcript.")]
+    return [
+        _result(
+            constraint,
+            False,
+            "Missing fixed EE major core course(s).",
+            affected_courses=missing,
+        )
+    ]
+
+
+def _evaluate_major_choice(config: DegreeAuditConfig, allocations: list[Allocation]) -> list[ConstraintResult]:
+    constraint = _constraint(config, "EE24JC_MAJOR_CHOICE_EXACTLY_ONE")
+    requirement = config.requirement_by_id(MAJOR_CHOICE_REQUIREMENT_ID)
+    allowed = set(requirement.courses if requirement else {"EE2026", "EE2028"})
+    choices = [
+        allocation.course_code
+        for allocation in allocations
+        if allocation.requirement_id == MAJOR_CHOICE_REQUIREMENT_ID
+        and allocation.allocation_role != "ignored"
+        and allocation.course_code in allowed
+    ]
+    if len(choices) == 1:
+        return [_result(constraint, True, f"Major digital/microcontroller choice is {choices[0]}.")]
+    return [
+        _result(
+            constraint,
+            False,
+            "Exactly one of EE2026 or EE2028 must be allocated to the EE major digital/microcontroller choice.",
+            affected_courses=sorted(choices),
+        )
+    ]
 
 
 def _evaluate_min_count(
@@ -141,4 +185,3 @@ def _result(
         message=message,
         affected_courses=affected_courses or [],
     )
-

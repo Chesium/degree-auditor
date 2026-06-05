@@ -155,6 +155,7 @@ class ConstraintResult(StrictModel):
 
 class AuditResult(StrictModel):
     overall_status: Literal["PASS", "FAIL", "PARTIAL"]
+    requirement_statuses: dict[str, Literal["PASS", "FAIL", "PARTIAL"]] = Field(default_factory=dict)
     satisfied_requirements: list[str] = Field(default_factory=list)
     failed_requirements: list[str] = Field(default_factory=list)
     allocations: list[Allocation] = Field(default_factory=list)
@@ -188,4 +189,3 @@ class DegreeAuditConfig(StrictModel):
 
     def constraint_by_id(self, constraint_id: str) -> Constraint | None:
         return next((constraint for constraint in self.constraints if constraint.id == constraint_id), None)
-

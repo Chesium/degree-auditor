@@ -1,4 +1,29 @@
 constraints:
+  - id: EE24JC_MAJOR_CORE_COMPLETE
+    description: EE Major fixed core courses must all be completed or planned in the transcript.
+    constraint_type: major_core_complete
+    params:
+      requirement_id: EE24JC_MAJOR_CORE
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Major Requirements
+      quote: Major Requirements 60 units
+      notes: The prototype checks presence of the listed fixed EE major core courses in the transcript.
+  - id: EE24JC_MAJOR_CHOICE_EXACTLY_ONE
+    description: Exactly one of EE2026 or EE2028 must fulfil the EE major digital/microcontroller choice.
+    constraint_type: major_choice_exactly_one
+    params:
+      requirement_id: EE24JC_MAJOR_DIGITAL_CHOICE
+      courses:
+        - EE2026
+        - EE2028
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Major Requirements
+      quote: EE2026 Digital Design or EE2028 Microcontroller Programming and Interfacing
+      notes: The course not used for this major choice may be eligible for TC.
   - id: EE24JC_TC_MIN_3
     description: AY2024 JC/non-poly intake must complete at least three Technical Courses.
     constraint_type: min_count
@@ -58,4 +83,3 @@ constraints:
       section: Major Requirements
       quote: EE3xxx does not include EE3033; EE3031 can only fulfil UE for students of AY2021-AY2024 intake, not T.E rule.
       notes: The prototype treats both exclusions as hard TE eligibility failures.
-

@@ -5,9 +5,11 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+import yaml
 from rich.console import Console
 from rich.table import Table
 
+from degree_auditor.allocation import plan_allocations
 from degree_auditor.audit import audit
 from degree_auditor.config_loader import load_allocations, load_config, load_transcript
 from degree_auditor.eligibility import expand_eligibility
@@ -39,6 +41,37 @@ def expand_eligibility_command(
     table.add_column("Eligible Requirements")
     for course_code, requirement_ids in expanded.items():
         table.add_row(course_code, ", ".join(requirement_ids) or "-")
+    console.print(table)
+
+
+@app.command("plan-allocation")
+def plan_allocation_command(
+    config: ConfigOption,
+    transcript: Annotated[Path, typer.Option("--transcript", "-t")],
+    out: Annotated[Path, typer.Option("--out", "-o")],
+) -> None:
+    loaded = load_config(config)
+    courses = load_transcript(transcript)
+    allocations = plan_allocations(loaded, courses)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"allocations": [allocation.model_dump(mode="json") for allocation in allocations]}
+    out.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
+    console.print(f"[green]Wrote allocation plan[/green]: {out}")
+
+
+@app.command("list-requirements")
+def list_requirements_command(config: ConfigOption) -> None:
+    loaded = load_config(config)
+    table = Table(title="Requirements")
+    table.add_column("ID")
+    table.add_column("Type")
+    table.add_column("Description")
+    table.add_column("Source")
+    for requirement in loaded.requirements:
+        source = requirement.source_ref.document
+        if requirement.source_ref.page is not None:
+            source = f"{source}:p{requirement.source_ref.page}"
+        table.add_row(requirement.id, requirement.requirement_type, requirement.description, source)
     console.print(table)
 
 
