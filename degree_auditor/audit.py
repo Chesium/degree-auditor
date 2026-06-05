@@ -8,7 +8,7 @@ from degree_auditor.eligibility import (
     TE_REQUIREMENT_ID,
 )
 from degree_auditor.models import Allocation, AuditResult, CourseAttempt, DegreeAuditConfig
-from degree_auditor.specialisations import evaluate_specialisations
+from degree_auditor.specialisations import evaluate_sep_reuse_constraint, evaluate_specialisations
 
 
 MAJOR_PROGRAMME_ID = "EE24JC_MAJOR"
@@ -23,6 +23,7 @@ def audit(
     allocations = manual_allocations if manual_allocations is not None else plan_allocations(config, courses)
     constraint_results = evaluate_constraints(config, courses, allocations)
     specialisation_results = evaluate_specialisations(config, courses, allocations, student_flags or [])
+    constraint_results.extend(evaluate_sep_reuse_constraint(config, courses, allocations))
     failed_constraints = [result for result in constraint_results if not result.passed]
     failed_specialisations = [result for result in specialisation_results if result.status == "FAIL"]
 
@@ -69,6 +70,8 @@ def _requirement_statuses(failed_constraints: list) -> dict[str, str]:
         "EE24JC_TC_ELIGIBILITY": [TC_REQUIREMENT_ID],
         "EE24JC_TE_MIN_2": [TE_REQUIREMENT_ID],
         "EE24JC_TE_ELIGIBILITY": [TE_REQUIREMENT_ID],
+        "EE24JC_TE_SEP_ONE_NUS": [TE_REQUIREMENT_ID],
+        "EE24JC_TE_SEP_MAX_ONE": [TE_REQUIREMENT_ID],
         "EE24JC_TC_TE_MUTUAL_EXCLUSION": [TC_REQUIREMENT_ID, TE_REQUIREMENT_ID],
     }
 

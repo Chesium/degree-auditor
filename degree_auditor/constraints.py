@@ -1,17 +1,27 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import re
 
 from degree_auditor.allocation import FIXED_MAJOR_CORE_REQUIREMENT_ID
 from degree_auditor.eligibility import (
     MAJOR_CHOICE_REQUIREMENT_ID,
     TC_REQUIREMENT_ID,
     TE_REQUIREMENT_ID,
+    canonical_code,
     is_tc_eligible,
     is_te_eligible,
     major_choice_course,
 )
-from degree_auditor.models import Allocation, Constraint, ConstraintResult, CourseAttempt, DegreeAuditConfig
+from degree_auditor.models import (
+    Allocation,
+    ApprovalStatus,
+    Constraint,
+    ConstraintResult,
+    CourseAttempt,
+    CourseSource,
+    DegreeAuditConfig,
+)
 
 
 def evaluate_constraints(
@@ -26,7 +36,8 @@ def evaluate_constraints(
     results.append(_evaluate_min_count(config, allocations, TE_REQUIREMENT_ID, "EE24JC_TE_MIN_2", minimum=2))
     results.extend(_evaluate_tc_te_mutual_exclusion(config, allocations))
     results.extend(_evaluate_tc_eligibility(config, allocations))
-    results.extend(_evaluate_te_eligibility(config, allocations))
+    results.extend(_evaluate_te_eligibility(config, courses, allocations))
+    results.extend(_evaluate_te_sep_rules(config, courses, allocations))
     return results
 
 
@@ -144,7 +155,11 @@ def _evaluate_tc_eligibility(config: DegreeAuditConfig, allocations: list[Alloca
     ]
 
 
-def _evaluate_te_eligibility(config: DegreeAuditConfig, allocations: list[Allocation]) -> list[ConstraintResult]:
+def _evaluate_te_eligibility(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
     constraint = _constraint(config, "EE24JC_TE_ELIGIBILITY")
     failures = sorted(
         {
@@ -152,7 +167,7 @@ def _evaluate_te_eligibility(config: DegreeAuditConfig, allocations: list[Alloca
             for allocation in allocations
             if allocation.requirement_id == TE_REQUIREMENT_ID
             and allocation.allocation_role != "ignored"
-            and not is_te_eligible(config, allocation.course_code)
+            and not is_te_eligible(config, _effective_code_for_allocation(config, courses, allocation))
         }
     )
     if not failures:
@@ -165,6 +180,104 @@ def _evaluate_te_eligibility(config: DegreeAuditConfig, allocations: list[Alloca
             affected_courses=failures,
         )
     ]
+
+
+def _evaluate_te_sep_rules(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
+    te_allocations = [
+        allocation
+        for allocation in allocations
+        if allocation.requirement_id == TE_REQUIREMENT_ID and allocation.allocation_role != "ignored"
+    ]
+    qualifying: list[tuple[Allocation, CourseAttempt | None, str]] = []
+    for allocation in te_allocations:
+        attempt = _attempt_for_allocation(config, courses, allocation)
+        code = canonical_code(config, attempt.effective_code if attempt is not None else allocation.course_code)
+        if not _is_sep_restricted_te_code(code):
+            continue
+        qualifying.append((allocation, attempt, code))
+
+    nus_courses = sorted(
+        code
+        for allocation, attempt, code in qualifying
+        if attempt is not None and attempt.source == CourseSource.nus
+    )
+    sep_courses = sorted(
+        {
+            allocation.course_code
+            for allocation, attempt, code in qualifying
+            if attempt is not None
+            and attempt.source == CourseSource.sep
+            and attempt.approval_status == ApprovalStatus.approved
+        }
+    )
+    non_approved_sep = sorted(
+        {
+            allocation.course_code
+            for allocation, attempt, code in qualifying
+            if attempt is not None
+            and attempt.source == CourseSource.sep
+            and attempt.approval_status != ApprovalStatus.approved
+        }
+    )
+
+    one_nus_constraint = _constraint(config, "EE24JC_TE_SEP_ONE_NUS")
+    max_one_constraint = _constraint(config, "EE24JC_TE_SEP_MAX_ONE")
+    results = [
+        _result(
+            one_nus_constraint,
+            bool(nus_courses),
+            "At least one qualifying EE3xxxC or EE4xxx TE is completed at NUS."
+            if nus_courses
+            else "At least one qualifying EE3xxxC or EE4xxx TE must be completed at NUS.",
+            affected_courses=[] if nus_courses else [allocation.course_code for allocation, _, _ in qualifying],
+        )
+    ]
+
+    max_one_passed = len(sep_courses) <= 1 and not non_approved_sep
+    message = f"{len(sep_courses)} approved SEP-mapped qualifying TE allocation(s); at most 1 allowed."
+    if non_approved_sep:
+        message = "SEP-mapped TE allocations must be approved before they can satisfy the Major TE rule."
+    results.append(
+        _result(
+            max_one_constraint,
+            max_one_passed,
+            message,
+            affected_courses=sep_courses[1:] if len(sep_courses) > 1 else non_approved_sep,
+        )
+    )
+    return results
+
+
+def _attempt_for_allocation(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocation: Allocation,
+) -> CourseAttempt | None:
+    allocation_code = canonical_code(config, allocation.course_code)
+    for course in courses:
+        if allocation_code == canonical_code(config, course.course_code):
+            return course
+    for course in courses:
+        if allocation_code == canonical_code(config, course.effective_code):
+            return course
+    return None
+
+
+def _effective_code_for_allocation(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocation: Allocation,
+) -> str:
+    attempt = _attempt_for_allocation(config, courses, allocation)
+    return attempt.effective_code if attempt is not None else allocation.course_code
+
+
+def _is_sep_restricted_te_code(course_code: str) -> bool:
+    return re.match(r"^EE4\d{3}$", course_code) is not None or re.match(r"^EE3\d{3}C$", course_code) is not None
 
 
 def _constraint(config: DegreeAuditConfig, constraint_id: str) -> Constraint | None:

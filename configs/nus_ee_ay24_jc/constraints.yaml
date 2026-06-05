@@ -83,3 +83,43 @@ constraints:
       section: Major Requirements
       quote: EE3xxx does not include EE3033; EE3031 can only fulfil UE for students of AY2021-AY2024 intake, not T.E rule.
       notes: The prototype treats both exclusions as hard TE eligibility failures.
+  - id: EE24JC_TE_SEP_ONE_NUS
+    description: At least one qualifying EE3xxxC or EE4xxx TE must be completed at NUS.
+    constraint_type: te_sep_one_nus
+    params:
+      requirement_id: EE24JC_TE
+      qualifying_patterns:
+        - EE3xxxC
+        - EE4xxx
+    source_ref:
+      document: prompt.txt
+      page: null
+      section: SEP rules
+      quote: At least one TE, either EE3xxxC or EE4xxx, must be completed at NUS.
+      notes: Source text records the SEP special rule for Major TE.
+  - id: EE24JC_TE_SEP_MAX_ONE
+    description: At most one SEP-mapped EE3xxxC or EE4xxx may fulfil Major TE.
+    constraint_type: te_sep_max_one
+    params:
+      requirement_id: EE24JC_TE
+      qualifying_patterns:
+        - EE3xxxC
+        - EE4xxx
+      max_sep_count: 1
+    source_ref:
+      document: prompt.txt
+      page: null
+      section: SEP rules
+      quote: At most one SEP-mapped EE3xxxC/EE4xxx may be used to fulfil Major TE.
+      notes: Only approved SEP mappings count positively.
+  - id: EE_SPEC_SEP_NO_REUSE
+    description: The same approved SEP course must not be mapped to more than one specialisation.
+    constraint_type: specialisation_sep_no_reuse
+    params:
+      scope: specialisations
+    source_ref:
+      document: prompt.txt
+      page: null
+      section: SEP rules
+      quote: A SEP course approved for one Specialisation should not be mapped again to another Specialisation or Minor.
+      notes: Minor checks are out of scope for this prototype pass; cross-specialisation reuse is enforced.

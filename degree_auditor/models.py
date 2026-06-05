@@ -32,6 +32,13 @@ class CourseSource(StrEnum):
     manual = "MANUAL"
 
 
+class ApprovalStatus(StrEnum):
+    approved = "approved"
+    pending = "pending"
+    rejected = "rejected"
+    unknown = "unknown"
+
+
 class AllocationRole(StrEnum):
     primary = "primary"
     double_count = "double_count"
@@ -49,6 +56,7 @@ class CourseAttempt(StrictModel):
     status: CourseStatus = CourseStatus.completed
     source: CourseSource = CourseSource.nus
     mapped_to: str | None = None
+    approval_status: ApprovalStatus = ApprovalStatus.approved
     topic_tags: list[str] = Field(default_factory=list)
     approved_for: list[str] = Field(default_factory=list)
 

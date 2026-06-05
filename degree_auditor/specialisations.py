@@ -7,7 +7,11 @@ from degree_auditor.eligibility import canonical_code, course_in_pool
 from degree_auditor.models import (
     Allocation,
     AllocationRole,
+    ApprovalStatus,
+    Constraint,
+    ConstraintResult,
     CourseAttempt,
+    CourseSource,
     DegreeAuditConfig,
     Requirement,
     Specialisation,
@@ -17,6 +21,7 @@ from degree_auditor.models import (
 
 
 SUPPORTED_SPECIALISATIONS = {"AE", "IND4", "SET", "MQM", "RBT", "SPT"}
+SEP_ONLY_SPECIALISATIONS = {"IOT"}
 CAPSTONE_LOCK_SPECIALISATIONS = {"SPT", "RBT", "IOT", "MQM"}
 CAPSTONE_CODES = {"EE4002D", "EE4002R"}
 COMMON_CURRICULUM_CAPSTONE_REQUIREMENT_ID = "CDE_CAPSTONE"
@@ -37,10 +42,41 @@ def evaluate_specialisations(
         and allocation.allocation_role != AllocationRole.ignored
     }
     specialisations = {specialisation.id: specialisation for specialisation in config.specialisations}
-    return [
+    results = [
         _evaluate_specialisation(config, specialisations[specialisation_id], courses, allocations, student_flags or [])
         for specialisation_id in sorted(selected_ids)
         if specialisation_id in SUPPORTED_SPECIALISATIONS
+    ]
+    results.extend(
+        _evaluate_sep_only_specialisation(config, specialisations[specialisation_id], courses, allocations)
+        for specialisation_id in sorted(selected_ids)
+        if specialisation_id in SEP_ONLY_SPECIALISATIONS
+    )
+    return _apply_cross_specialisation_sep_reuse(config, courses, allocations, results)
+
+
+def evaluate_sep_reuse_constraint(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
+    constraint = config.constraint_by_id("EE_SPEC_SEP_NO_REUSE")
+    reused = _reused_sep_courses_across_specialisations(config, courses, allocations)
+    if not reused:
+        return [
+            _constraint_result(
+                constraint,
+                True,
+                "No SEP course is mapped to more than one specialisation.",
+            )
+        ]
+    return [
+        _constraint_result(
+            constraint,
+            False,
+            "A SEP course approved for one specialisation must not be mapped again to another specialisation.",
+            affected_courses=sorted(reused),
+        )
     ]
 
 
@@ -106,10 +142,13 @@ def _evaluate_specialisation(
             capstone_failures.append(f"{specialisation.id}_CAPSTONE_LOCK")
             capstone_messages.append("Capstone lock leaves no overlap budget for additional non-UE overlaps.")
 
+    sep_failures, sep_messages = _specialisation_sep_policy(config, specialisation, courses, allocations)
+
     failed_requirements = (
         selected["failed_requirements"]
         + [f"{specialisation.id}_GLOBAL_POLICY"] * bool(policy_failures)
         + capstone_failures
+        + sep_failures
     )
     status = "PASS" if not failed_requirements else "FAIL"
 
@@ -122,7 +161,28 @@ def _evaluate_specialisation(
         distinct_units=distinct_units,
         satisfied_requirements=selected["satisfied_requirements"],
         failed_requirements=failed_requirements,
-        messages=selected["messages"] + policy_failures + capstone_messages,
+        messages=selected["messages"] + policy_failures + capstone_messages + sep_messages,
+    )
+
+
+def _evaluate_sep_only_specialisation(
+    config: DegreeAuditConfig,
+    specialisation: Specialisation,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> SpecialisationResult:
+    sep_failures, sep_messages = _specialisation_sep_policy(config, specialisation, courses, allocations)
+    status = "PASS" if not sep_failures else "FAIL"
+    return SpecialisationResult(
+        specialisation_id=specialisation.id,
+        status=status,
+        selected_path_id=None,
+        units_counted=_specialisation_units(specialisation, allocations),
+        overlap_units=_overlap_units(config, specialisation, allocations),
+        distinct_units=0,
+        satisfied_requirements=[],
+        failed_requirements=sep_failures,
+        messages=sep_messages,
     )
 
 
@@ -170,7 +230,10 @@ def _evaluate_requirement(
         for allocation in allocations
         if allocation.requirement_id == requirement.id and allocation.allocation_role != AllocationRole.ignored
     ]
-    allocated_codes = {canonical_code(config, allocation.course_code) for allocation in requirement_allocations}
+    allocated_codes = {
+        canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
+        for allocation in requirement_allocations
+    }
 
     if requirement.requirement_type in {"all_of", "course_list"}:
         missing = [course for course in requirement.courses if canonical_code(config, course) not in allocated_codes]
@@ -183,12 +246,12 @@ def _evaluate_requirement(
         return count >= minimum, f"{requirement.id} has {count} choice course(s); requires {minimum}."
 
     if requirement.requirement_type == "choose_count":
-        count = len(_matching_pool_allocations(config, requirement, requirement_allocations))
+        count = len(_matching_pool_allocations(config, requirement, requirement_allocations, courses))
         minimum = requirement.min_count or 1
         return count >= minimum, f"{requirement.id} has {count} course(s); requires {minimum}."
 
     if requirement.requirement_type == "choose_units":
-        units = sum(_matching_pool_allocations(config, requirement, requirement_allocations).values())
+        units = sum(_matching_pool_allocations(config, requirement, requirement_allocations, courses).values())
         required_units = requirement.units or 0
         return units >= required_units, f"{requirement.id} has {units} unit(s); requires {required_units}."
 
@@ -196,9 +259,14 @@ def _evaluate_requirement(
         matching = [
             allocation
             for allocation in requirement_allocations
-            if canonical_code(config, allocation.course_code)
+            if canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
             in {canonical_code(config, course) for course in requirement.courses}
-            and _has_topic_tags(config, allocation.course_code, requirement.topic_tags, courses)
+            and _has_topic_tags(
+                config,
+                _effective_code_for_allocation(config, courses, allocation),
+                requirement.topic_tags,
+                courses,
+            )
         ]
         return bool(matching), f"{requirement.id} needs a project option with topic tag(s): {requirement.topic_tags}."
 
@@ -209,6 +277,7 @@ def _matching_pool_allocations(
     config: DegreeAuditConfig,
     requirement: Requirement,
     allocations: list[Allocation],
+    courses: list[CourseAttempt],
 ) -> dict[str, int]:
     if requirement.pool_id is None:
         return {}
@@ -217,7 +286,7 @@ def _matching_pool_allocations(
         return {}
     matched: dict[str, int] = {}
     for allocation in allocations:
-        code = canonical_code(config, allocation.course_code)
+        code = canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
         if course_in_pool(code, pool):
             matched[code] = max(matched.get(code, 0), allocation.units)
     return matched
@@ -265,21 +334,42 @@ def _capstone_lock(
     if specialisation.id not in CAPSTONE_LOCK_SPECIALISATIONS:
         return None
     common_capstones = {
-        canonical_code(config, allocation.course_code)
+        canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
         for allocation in allocations
         if allocation.requirement_id == COMMON_CURRICULUM_CAPSTONE_REQUIREMENT_ID
         and allocation.allocation_role != AllocationRole.ignored
-        and canonical_code(config, allocation.course_code) in CAPSTONE_CODES
+        and canonical_code(config, _effective_code_for_allocation(config, courses, allocation)) in CAPSTONE_CODES
     }
     if not common_capstones:
         return None
     spec_requirement_ids = _specialisation_requirement_ids(specialisation)
     for allocation in allocations:
-        code = canonical_code(config, allocation.course_code)
+        code = canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
         if (
             allocation.requirement_id in spec_requirement_ids
             and allocation.allocation_role != AllocationRole.ignored
             and code in common_capstones
+            and _capstone_allocation_matches_requirement(config, allocation, courses)
+        ):
+            return code
+    return None
+
+
+def _specialisation_capstone_use(
+    config: DegreeAuditConfig,
+    specialisation: Specialisation,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> str | None:
+    if specialisation.id not in CAPSTONE_LOCK_SPECIALISATIONS:
+        return None
+    spec_requirement_ids = _specialisation_requirement_ids(specialisation)
+    for allocation in allocations:
+        code = canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
+        if (
+            allocation.requirement_id in spec_requirement_ids
+            and allocation.allocation_role != AllocationRole.ignored
+            and code in CAPSTONE_CODES
             and _capstone_allocation_matches_requirement(config, allocation, courses)
         ):
             return code
@@ -294,9 +384,10 @@ def _capstone_allocation_matches_requirement(
     requirement = config.requirement_by_id(allocation.requirement_id)
     if requirement is None:
         return False
-    if canonical_code(config, allocation.course_code) not in {canonical_code(config, course) for course in requirement.courses}:
-        return requirement.requirement_type != "project_option" and canonical_code(config, allocation.course_code) in CAPSTONE_CODES
-    return _has_topic_tags(config, allocation.course_code, requirement.topic_tags, courses)
+    code = canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
+    if code not in {canonical_code(config, course) for course in requirement.courses}:
+        return requirement.requirement_type != "project_option" and code in CAPSTONE_CODES
+    return _has_topic_tags(config, code, requirement.topic_tags, courses)
 
 
 def _technical_elective_overlaps_after_capstone_lock(
@@ -355,6 +446,219 @@ def _non_te_overlap_units_excluding_capstone(
         if has_non_te_overlap:
             units += course_units
     return units
+
+
+def _specialisation_sep_policy(
+    config: DegreeAuditConfig,
+    specialisation: Specialisation,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> tuple[list[str], list[str]]:
+    sep_units = _sep_units_for_specialisation(config, specialisation, courses, allocations)
+    non_approved = _non_approved_sep_courses_for_specialisation(config, specialisation, courses, allocations)
+    failures: list[str] = []
+    messages: list[str] = []
+
+    if sep_units > 8:
+        failures.append(f"{specialisation.id}_SEP_MAX_8_UNITS")
+        messages.append(f"{specialisation.id} maps {sep_units} SEP unit(s); at most 8 are allowed.")
+    if non_approved:
+        failures.append(f"{specialisation.id}_SEP_MAX_8_UNITS")
+        messages.append(
+            "SEP courses mapped to a specialisation must be approved before they can satisfy it: "
+            + ", ".join(non_approved)
+            + "."
+        )
+
+    capstone = _specialisation_capstone_use(config, specialisation, courses, allocations)
+    sep_courses = _sep_courses_for_specialisation(config, specialisation, courses, allocations)
+    if capstone and sep_courses:
+        failures.append(f"{specialisation.id}_SEP_FORBIDDEN_WITH_CAPSTONE")
+        messages.append(
+            f"{specialisation.id} uses capstone {capstone}; SEP mapping is forbidden for that specialisation: "
+            + ", ".join(sorted(sep_courses))
+            + "."
+        )
+    return failures, messages
+
+
+def _sep_units_for_specialisation(
+    config: DegreeAuditConfig,
+    specialisation: Specialisation,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> int:
+    units_by_original_code: dict[str, int] = {}
+    for allocation, attempt in _sep_allocations_for_specialisation(config, specialisation, courses, allocations):
+        if attempt.approval_status == ApprovalStatus.approved:
+            units_by_original_code[attempt.course_code] = max(
+                units_by_original_code.get(attempt.course_code, 0),
+                allocation.units,
+            )
+    return sum(units_by_original_code.values())
+
+
+def _sep_courses_for_specialisation(
+    config: DegreeAuditConfig,
+    specialisation: Specialisation,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> set[str]:
+    return {
+        attempt.course_code
+        for _, attempt in _sep_allocations_for_specialisation(config, specialisation, courses, allocations)
+        if attempt.approval_status == ApprovalStatus.approved
+    }
+
+
+def _non_approved_sep_courses_for_specialisation(
+    config: DegreeAuditConfig,
+    specialisation: Specialisation,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[str]:
+    return sorted(
+        {
+            attempt.course_code
+            for _, attempt in _sep_allocations_for_specialisation(config, specialisation, courses, allocations)
+            if attempt.approval_status != ApprovalStatus.approved
+        }
+    )
+
+
+def _sep_allocations_for_specialisation(
+    config: DegreeAuditConfig,
+    specialisation: Specialisation,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[tuple[Allocation, CourseAttempt]]:
+    spec_requirement_ids = _specialisation_requirement_ids(specialisation)
+    pairs: list[tuple[Allocation, CourseAttempt]] = []
+    for allocation in allocations:
+        if allocation.requirement_id not in spec_requirement_ids or allocation.allocation_role == AllocationRole.ignored:
+            continue
+        attempt = _attempt_for_allocation(config, courses, allocation)
+        if attempt is not None and attempt.source == CourseSource.sep:
+            pairs.append((allocation, attempt))
+    return pairs
+
+
+def _apply_cross_specialisation_sep_reuse(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+    results: list[SpecialisationResult],
+) -> list[SpecialisationResult]:
+    reused = _reused_sep_courses_across_specialisations(config, courses, allocations)
+    if not reused:
+        return results
+    affected_by_spec = _reused_sep_courses_by_specialisation(config, courses, allocations, reused)
+    updated: list[SpecialisationResult] = []
+    for result in results:
+        affected = sorted(affected_by_spec.get(result.specialisation_id, set()))
+        if not affected:
+            updated.append(result)
+            continue
+        failure_id = f"{result.specialisation_id}_SEP_NO_REUSE"
+        updated.append(
+            result.model_copy(
+                update={
+                    "status": "FAIL",
+                    "failed_requirements": result.failed_requirements + [failure_id],
+                    "messages": result.messages
+                    + [
+                        "SEP course mapped to more than one specialisation: "
+                        + ", ".join(affected)
+                        + "."
+                    ],
+                }
+            )
+        )
+    return updated
+
+
+def _reused_sep_courses_across_specialisations(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> set[str]:
+    by_course = _specialisations_by_sep_course(config, courses, allocations)
+    return {course_code for course_code, specialisations in by_course.items() if len(specialisations) > 1}
+
+
+def _reused_sep_courses_by_specialisation(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+    reused_courses: set[str],
+) -> dict[str, set[str]]:
+    by_course = _specialisations_by_sep_course(config, courses, allocations)
+    by_specialisation: dict[str, set[str]] = defaultdict(set)
+    for course_code in reused_courses:
+        for specialisation_id in by_course[course_code]:
+            by_specialisation[specialisation_id].add(course_code)
+    return by_specialisation
+
+
+def _specialisations_by_sep_course(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> dict[str, set[str]]:
+    requirement_to_specialisation = _requirement_to_specialisation(config)
+    by_course: dict[str, set[str]] = defaultdict(set)
+    for allocation in allocations:
+        specialisation_id = requirement_to_specialisation.get(allocation.requirement_id)
+        if specialisation_id is None or allocation.allocation_role == AllocationRole.ignored:
+            continue
+        attempt = _attempt_for_allocation(config, courses, allocation)
+        if (
+            attempt is not None
+            and attempt.source == CourseSource.sep
+            and attempt.approval_status == ApprovalStatus.approved
+        ):
+            by_course[attempt.course_code].add(specialisation_id)
+    return by_course
+
+
+def _attempt_for_allocation(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocation: Allocation,
+) -> CourseAttempt | None:
+    allocation_code = canonical_code(config, allocation.course_code)
+    for course in courses:
+        if allocation_code == canonical_code(config, course.course_code):
+            return course
+    for course in courses:
+        if allocation_code == canonical_code(config, course.effective_code):
+            return course
+    return None
+
+
+def _effective_code_for_allocation(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocation: Allocation,
+) -> str:
+    attempt = _attempt_for_allocation(config, courses, allocation)
+    return attempt.effective_code if attempt is not None else allocation.course_code
+
+
+def _constraint_result(
+    constraint: Constraint | None,
+    passed: bool,
+    message: str,
+    affected_courses: list[str] | None = None,
+) -> ConstraintResult:
+    return ConstraintResult(
+        constraint_id=constraint.id if constraint else "UNKNOWN",
+        passed=passed,
+        description=constraint.description if constraint else "Unknown constraint",
+        source_ref=constraint.source_ref if constraint else None,
+        message=message,
+        affected_courses=affected_courses or [],
+    )
 
 
 def _specialisation_requirement_ids(specialisation: Specialisation) -> set[str]:
