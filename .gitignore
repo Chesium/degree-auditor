@@ -1,1 +1,11 @@
 *.pyc
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.venv/
+tmp/
+temp/
+allocation.yaml
+allocations.yaml
+*.allocation.yaml
+*.allocations.yaml

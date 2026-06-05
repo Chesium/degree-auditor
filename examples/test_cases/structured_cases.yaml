@@ -1,0 +1,432 @@
+base_courses: &base_courses
+  - course_code: EE1111A
+  - course_code: EE2111A
+  - course_code: EE2012
+  - course_code: EE2022
+  - course_code: EE2023
+  - course_code: EE2027
+  - course_code: PC2020
+  - course_code: EE2028
+  - course_code: EE2026
+  - course_code: EE3331C
+  - course_code: EE3408C
+  - course_code: EE4308
+  - course_code: EE4211
+
+base_allocations: &base_allocations
+  - course_code: EE2028
+    requirement_id: EE24JC_MAJOR_DIGITAL_CHOICE
+  - course_code: EE2026
+    requirement_id: EE24JC_TC
+  - course_code: EE3331C
+    requirement_id: EE24JC_TC
+  - course_code: EE3408C
+    requirement_id: EE24JC_TC
+  - course_code: EE4308
+    requirement_id: EE24JC_TE
+  - course_code: EE4211
+    requirement_id: EE24JC_TE
+
+cases:
+  - id: major_core_pass_basic
+    description: Student completed fixed EE major core, one major choice, 3 TC, and 2 valid TE.
+    transcript:
+      courses: *base_courses
+    expected:
+      pass: true
+      satisfied_requirements:
+        - EE24JC_MAJOR_CORE
+        - EE24JC_MAJOR_DIGITAL_CHOICE
+        - EE24JC_TC
+        - EE24JC_TE
+      failed_requirements: []
+      failed_constraints: []
+      warnings: []
+
+  - id: tc_te_mutual_exclusion_fail
+    description: Same EE3xxxC course manually allocated to both TC and TE.
+    transcript:
+      courses: *base_courses
+    manual_allocation:
+      allocations:
+        - course_code: EE2028
+          requirement_id: EE24JC_MAJOR_DIGITAL_CHOICE
+        - course_code: EE2026
+          requirement_id: EE24JC_TC
+        - course_code: EE3331C
+          requirement_id: EE24JC_TC
+        - course_code: EE3408C
+          requirement_id: EE24JC_TC
+        - course_code: EE3331C
+          requirement_id: EE24JC_TE
+        - course_code: EE4308
+          requirement_id: EE24JC_TE
+    expected:
+      pass: false
+      satisfied_requirements: []
+      failed_requirements:
+        - EE24JC_TC
+        - EE24JC_TE
+      failed_constraints:
+        - EE24JC_TC_TE_MUTUAL_EXCLUSION
+      warnings: []
+
+  - id: ee3031_not_te_fail
+    description: EE3031 manually allocated as TE.
+    transcript:
+      courses: *base_courses
+    manual_allocation:
+      allocations:
+        - course_code: EE2028
+          requirement_id: EE24JC_MAJOR_DIGITAL_CHOICE
+        - course_code: EE2026
+          requirement_id: EE24JC_TC
+        - course_code: EE3331C
+          requirement_id: EE24JC_TC
+        - course_code: EE3408C
+          requirement_id: EE24JC_TC
+        - course_code: EE3031
+          requirement_id: EE24JC_TE
+        - course_code: EE4308
+          requirement_id: EE24JC_TE
+    expected:
+      pass: false
+      satisfied_requirements: []
+      failed_requirements:
+        - EE24JC_TE
+      failed_constraints:
+        - EE24JC_TE_ELIGIBILITY
+      warnings: []
+
+  - id: ae_core_overlap_with_tc_within_budget
+    description: AE core course also allocated to TC while overlap stays within 8 units.
+    transcript:
+      courses: *base_courses
+    manual_allocation:
+      allocations:
+        - course_code: EE2028
+          requirement_id: EE24JC_MAJOR_DIGITAL_CHOICE
+        - course_code: EE2026
+          requirement_id: EE24JC_TC
+        - course_code: EE3331C
+          requirement_id: EE24JC_TC
+        - course_code: EE3408C
+          requirement_id: EE24JC_TC
+        - course_code: EE4308
+          requirement_id: EE24JC_TE
+        - course_code: EE4211
+          requirement_id: EE24JC_TE
+        - course_code: EE3408C
+          requirement_id: AE_CORE
+          allocation_role: double_count
+        - course_code: EE3431C
+          requirement_id: AE_CORE
+        - course_code: EE4409
+          requirement_id: AE_ELECTIVES
+        - course_code: EE4435
+          requirement_id: AE_ELECTIVES
+        - course_code: EE4437
+          requirement_id: AE_ELECTIVES
+    expected:
+      pass: true
+      satisfied_requirements:
+        - SPECIALISATION_AE
+      failed_requirements: []
+      failed_constraints: []
+      warnings: []
+
+  - id: robotics_capstone_overlap_lock_fail
+    description: Robotics capstone lock active and another Robotics elective also overlaps with TE.
+    transcript:
+      courses:
+        - course_code: EE1111A
+        - course_code: EE2111A
+        - course_code: EE2012
+        - course_code: EE2022
+        - course_code: EE2023
+        - course_code: EE2027
+        - course_code: PC2020
+        - course_code: EE2028
+        - course_code: EE2026
+        - course_code: EE3331C
+        - course_code: EE3408C
+        - course_code: EE4308
+        - course_code: EE4211
+        - course_code: EE4002D
+          units: 8
+          topic_tags:
+            - robotics
+    manual_allocation:
+      allocations:
+        - course_code: EE2028
+          requirement_id: EE24JC_MAJOR_DIGITAL_CHOICE
+        - course_code: EE2026
+          requirement_id: EE24JC_TC
+        - course_code: EE3331C
+          requirement_id: EE24JC_TC
+        - course_code: EE3408C
+          requirement_id: EE24JC_TC
+        - course_code: EE4308
+          requirement_id: EE24JC_TE
+        - course_code: EE4211
+          requirement_id: EE24JC_TE
+        - course_code: EE4002D
+          requirement_id: CDE_CAPSTONE
+          units: 8
+        - course_code: EE4308
+          requirement_id: RBT_ELECTIVES_12_UNITS
+        - course_code: EE4212
+          requirement_id: RBT_ELECTIVES_12_UNITS
+        - course_code: EE4216
+          requirement_id: RBT_ELECTIVES_12_UNITS
+        - course_code: EE4002D
+          requirement_id: RBT_CAPSTONE
+          units: 8
+    expected:
+      pass: false
+      satisfied_requirements: []
+      failed_requirements:
+        - SPECIALISATION_RBT
+      failed_constraints: []
+      warnings: []
+
+  - id: spt_capstone_sep_forbidden_fail
+    description: SPT uses satellite capstone and also maps a SEP course to SPT.
+    transcript:
+      courses:
+        - course_code: EE1111A
+        - course_code: EE2111A
+        - course_code: EE2012
+        - course_code: EE2022
+        - course_code: EE2023
+        - course_code: EE2027
+        - course_code: PC2020
+        - course_code: EE2028
+        - course_code: EE2026
+        - course_code: EE3331C
+        - course_code: EE3408C
+        - course_code: EE4308
+        - course_code: EE4211
+        - course_code: EE4002R
+          units: 8
+          topic_tags:
+            - satellite
+        - course_code: SEP3104
+          source: SEP
+          mapped_to: EE3104C
+    manual_allocation:
+      allocations:
+        - course_code: EE2028
+          requirement_id: EE24JC_MAJOR_DIGITAL_CHOICE
+        - course_code: EE2026
+          requirement_id: EE24JC_TC
+        - course_code: EE3331C
+          requirement_id: EE24JC_TC
+        - course_code: EE3408C
+          requirement_id: EE24JC_TC
+        - course_code: EE4308
+          requirement_id: EE24JC_TE
+        - course_code: EE4211
+          requirement_id: EE24JC_TE
+        - course_code: EE3105
+          requirement_id: SPT_CORE
+        - course_code: EE4002R
+          requirement_id: SPT_SATELLITE_CAPSTONE
+          units: 8
+        - course_code: SEP3104
+          requirement_id: SPT_ELECTIVES
+        - course_code: EE4101
+          requirement_id: SPT_ELECTIVES
+    expected:
+      pass: false
+      satisfied_requirements: []
+      failed_requirements:
+        - SPECIALISATION_SPT
+      failed_constraints: []
+      warnings: []
+
+  - id: sep_te_one_nus_one_sep_pass
+    description: One qualifying TE is completed at NUS and one qualifying TE is SEP-mapped.
+    transcript:
+      courses:
+        - course_code: EE1111A
+        - course_code: EE2111A
+        - course_code: EE2012
+        - course_code: EE2022
+        - course_code: EE2023
+        - course_code: EE2027
+        - course_code: PC2020
+        - course_code: EE2028
+        - course_code: EE2026
+        - course_code: EE3331C
+        - course_code: EE3408C
+        - course_code: EE4211
+        - course_code: SEP4308
+          source: SEP
+          mapped_to: EE4308
+    manual_allocation:
+      allocations:
+        - course_code: EE2028
+          requirement_id: EE24JC_MAJOR_DIGITAL_CHOICE
+        - course_code: EE2026
+          requirement_id: EE24JC_TC
+        - course_code: EE3331C
+          requirement_id: EE24JC_TC
+        - course_code: EE3408C
+          requirement_id: EE24JC_TC
+        - course_code: EE4211
+          requirement_id: EE24JC_TE
+        - course_code: SEP4308
+          requirement_id: EE24JC_TE
+    expected:
+      pass: true
+      satisfied_requirements:
+        - EE24JC_TE
+      failed_requirements: []
+      failed_constraints: []
+      warnings: []
+
+  - id: sep_specialisation_over_8_units_fail
+    description: AE maps more than 8 unique SEP units.
+    transcript:
+      courses:
+        - course_code: EE1111A
+        - course_code: EE2111A
+        - course_code: EE2012
+        - course_code: EE2022
+        - course_code: EE2023
+        - course_code: EE2027
+        - course_code: PC2020
+        - course_code: EE2028
+        - course_code: EE2026
+        - course_code: EE3331C
+        - course_code: EE3408C
+        - course_code: EE4308
+        - course_code: EE4211
+        - course_code: SEP3431
+          source: SEP
+          mapped_to: EE3431C
+        - course_code: SEP4409
+          source: SEP
+          mapped_to: EE4409
+        - course_code: SEP4435
+          source: SEP
+          mapped_to: EE4435
+    manual_allocation:
+      allocations:
+        - course_code: EE2028
+          requirement_id: EE24JC_MAJOR_DIGITAL_CHOICE
+        - course_code: EE2026
+          requirement_id: EE24JC_TC
+        - course_code: EE3331C
+          requirement_id: EE24JC_TC
+        - course_code: EE3408C
+          requirement_id: EE24JC_TC
+        - course_code: EE4308
+          requirement_id: EE24JC_TE
+        - course_code: EE4211
+          requirement_id: EE24JC_TE
+        - course_code: EE3408C
+          requirement_id: AE_CORE
+        - course_code: SEP3431
+          requirement_id: AE_CORE
+        - course_code: SEP4409
+          requirement_id: AE_ELECTIVES
+        - course_code: SEP4435
+          requirement_id: AE_ELECTIVES
+        - course_code: EE4437
+          requirement_id: AE_ELECTIVES
+    expected:
+      pass: false
+      satisfied_requirements: []
+      failed_requirements:
+        - SPECIALISATION_AE
+      failed_constraints: []
+      warnings: []
+
+  - id: sep_same_course_two_specialisations_fail
+    description: Same original SEP course mapped to Robotics and IoT.
+    transcript:
+      courses:
+        - course_code: EE1111A
+        - course_code: EE2111A
+        - course_code: EE2012
+        - course_code: EE2022
+        - course_code: EE2023
+        - course_code: EE2027
+        - course_code: PC2020
+        - course_code: EE2028
+        - course_code: EE2026
+        - course_code: EE3331C
+        - course_code: EE3408C
+        - course_code: EE4308
+        - course_code: EE4211
+        - course_code: SEP4216
+          source: SEP
+          mapped_to: EE4216
+    manual_allocation:
+      allocations:
+        - course_code: EE2028
+          requirement_id: EE24JC_MAJOR_DIGITAL_CHOICE
+        - course_code: EE2026
+          requirement_id: EE24JC_TC
+        - course_code: EE3331C
+          requirement_id: EE24JC_TC
+        - course_code: EE3408C
+          requirement_id: EE24JC_TC
+        - course_code: EE4308
+          requirement_id: EE24JC_TE
+        - course_code: EE4211
+          requirement_id: EE24JC_TE
+        - course_code: SEP4216
+          requirement_id: RBT_ELECTIVES_20_UNITS
+        - course_code: SEP4216
+          requirement_id: IOT_ELECTIVES
+    expected:
+      pass: false
+      satisfied_requirements: []
+      failed_requirements:
+        - SPECIALISATION_RBT
+        - SPECIALISATION_IOT
+      failed_constraints:
+        - EE_SPEC_SEP_NO_REUSE
+      warnings: []
+
+  - id: ue_residual_does_not_consume_overlap
+    description: Specialisation course allocated to specialisation and residual UE only.
+    transcript:
+      courses: *base_courses
+    manual_allocation:
+      allocations:
+        - course_code: EE2028
+          requirement_id: EE24JC_MAJOR_DIGITAL_CHOICE
+        - course_code: EE2026
+          requirement_id: EE24JC_TC
+        - course_code: EE3331C
+          requirement_id: EE24JC_TC
+        - course_code: EE3033
+          requirement_id: EE24JC_TC
+        - course_code: EE4308
+          requirement_id: EE24JC_TE
+        - course_code: EE4211
+          requirement_id: EE24JC_TE
+        - course_code: EE3408C
+          requirement_id: AE_CORE
+        - course_code: EE3431C
+          requirement_id: AE_CORE
+        - course_code: EE4409
+          requirement_id: AE_ELECTIVES
+        - course_code: EE4435
+          requirement_id: AE_ELECTIVES
+        - course_code: EE4437
+          requirement_id: AE_ELECTIVES
+        - course_code: EE4437
+          requirement_id: UE_RESIDUAL
+          allocation_role: residual_ue
+    expected:
+      pass: true
+      satisfied_requirements:
+        - SPECIALISATION_AE
+      failed_requirements: []
+      failed_constraints: []
+      warnings: []

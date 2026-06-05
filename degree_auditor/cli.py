@@ -13,6 +13,7 @@ from degree_auditor.allocation import plan_allocations
 from degree_auditor.audit import audit
 from degree_auditor.config_loader import load_allocations, load_config, load_student_flags, load_transcript
 from degree_auditor.eligibility import expand_eligibility
+from degree_auditor.reporting import render_audit_report
 
 
 app = typer.Typer(help="Prototype NUS EE degree auditor.")
@@ -121,15 +122,7 @@ def audit_command(
     if output_format != "text":
         raise typer.BadParameter("format must be text or json")
 
-    console.print(f"[bold]NUS EE AY24 JC Degree Audit[/bold]")
-    console.print(f"Overall status: [{'green' if result.overall_status == 'PASS' else 'red'}]{result.overall_status}[/]")
-    table = Table(title="Constraint Results")
-    table.add_column("Constraint")
-    table.add_column("Status")
-    table.add_column("Message")
-    for item in result.constraint_results:
-        table.add_row(item.constraint_id, "PASS" if item.passed else "FAIL", item.message)
-    console.print(table)
+    render_audit_report(loaded, result, console=console)
 
 
 if __name__ == "__main__":
