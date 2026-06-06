@@ -83,17 +83,19 @@ def test_audit_json_shape_contains_core_result_fields() -> None:
     assert result.exit_code == 0
     payload = json.loads(result.output)
     assert {
-        "overall_status",
-        "requirement_statuses",
-        "satisfied_requirements",
+        "pass",
+        "cohort",
+        "total_units",
+        "requirements",
         "failed_requirements",
-        "allocations",
-        "constraint_results",
-        "specialisation_results",
+        "constraints",
+        "failed_constraints",
         "warnings",
+        "specialisations",
+        "allocations",
     } <= set(payload)
-    assert {"constraint_id", "passed", "source_ref", "message"} <= set(payload["constraint_results"][0])
-    assert isinstance(payload["specialisation_results"], list)
+    assert {"id", "status", "source_ref", "message"} <= set(payload["constraints"][0])
+    assert isinstance(payload["specialisations"], list)
 
 
 def _render_text(config, result) -> str:

@@ -6,12 +6,14 @@ from typing import Annotated
 
 import typer
 import yaml
+from pydantic import ValidationError
 from rich.console import Console
 from rich.table import Table
 
 from degree_auditor.allocation import plan_allocations
 from degree_auditor.audit import audit
-from degree_auditor.config_loader import load_allocations, load_config, load_student_flags, load_transcript
+from degree_auditor.config_loader import ConfigLoadError, load_allocations, load_config, load_student_flags, load_transcript
+from degree_auditor.contract import to_contract_result
 from degree_auditor.eligibility import expand_eligibility
 from degree_auditor.interactive_allocation import (
     allocations_for_selection,
@@ -72,7 +74,7 @@ def interactive_allocate_command(
     transcript: Annotated[Path, typer.Option("--transcript", "-t")],
     out: Annotated[Path, typer.Option("--out", "-o")],
     run_audit: Annotated[bool, typer.Option("--audit", help="Run audit after writing the allocation YAML.")] = False,
-    audit_format: Annotated[str, typer.Option("--audit-format", help="Audit output format: text or json.")] = "text",
+    audit_format: Annotated[str, typer.Option("--audit-format", help="Audit output format: text, json, or yaml.")] = "text",
 ) -> None:
     loaded = load_config(config)
     courses = load_transcript(transcript)
@@ -109,12 +111,7 @@ def interactive_allocate_command(
 
     if run_audit:
         result = audit(loaded, courses, selected_allocations, student_flags=student_flags)
-        if audit_format == "json":
-            typer.echo(json.dumps(result.model_dump(mode="json"), indent=2))
-            return
-        if audit_format != "text":
-            raise typer.BadParameter("audit-format must be text or json")
-        render_audit_report(loaded, result, console=console)
+        _emit_audit_result(loaded, result, audit_format)
 
 
 @app.command("list-requirements")
@@ -167,19 +164,31 @@ def audit_command(
     allocation: Annotated[Path | None, typer.Option("--allocation", "-a")] = None,
     output_format: Annotated[str, typer.Option("--format")] = "text",
 ) -> None:
-    loaded = load_config(config)
-    courses = load_transcript(transcript)
-    student_flags = load_student_flags(transcript)
-    allocations = load_allocations(allocation) if allocation else None
+    try:
+        loaded = load_config(config)
+        courses = load_transcript(transcript)
+        student_flags = load_student_flags(transcript)
+        allocations = load_allocations(allocation) if allocation else None
+    except (ConfigLoadError, ValidationError, ValueError) as exc:
+        typer.echo(f"Invalid input: {exc}", err=True)
+        raise typer.Exit(1) from exc
     result = audit(loaded, courses, allocations, student_flags=student_flags)
+    _emit_audit_result(loaded, result, output_format)
 
+
+def _emit_audit_result(loaded, result, output_format: str) -> None:
+    contract = to_contract_result(loaded, result)
     if output_format == "json":
-        typer.echo(json.dumps(result.model_dump(mode="json"), indent=2))
-        return
-    if output_format != "text":
-        raise typer.BadParameter("format must be text or json")
+        typer.echo(json.dumps(contract, indent=2))
+    elif output_format == "yaml":
+        typer.echo(yaml.safe_dump(contract, sort_keys=False))
+    elif output_format == "text":
+        render_audit_report(loaded, result, console=console)
+    else:
+        raise typer.BadParameter("format must be text, json, or yaml")
 
-    render_audit_report(loaded, result, console=console)
+    if not contract["pass"]:
+        raise typer.Exit(2)
 
 
 if __name__ == "__main__":

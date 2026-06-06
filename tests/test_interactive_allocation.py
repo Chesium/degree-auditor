@@ -101,7 +101,7 @@ def test_interactive_allocate_can_run_audit_text(tmp_path: Path) -> None:
         input="\n",
     )
 
-    assert result.exit_code == 0
+    assert result.exit_code == 2
     assert "Wrote interactive allocation" in result.output
     assert "Overall status" in result.output
 
@@ -127,10 +127,11 @@ def test_interactive_allocate_can_run_audit_json(tmp_path: Path) -> None:
         input="\n",
     )
 
-    assert result.exit_code == 0
+    assert result.exit_code == 2
     payload_start = result.output.index("{")
     payload = json.loads(result.output[payload_start:])
-    assert {"overall_status", "constraint_results", "allocations"} <= set(payload)
+    assert {"pass", "constraints", "allocations"} <= set(payload)
+    assert payload["pass"] is False
 
 
 def test_docs_include_interactive_allocation_feature() -> None:
