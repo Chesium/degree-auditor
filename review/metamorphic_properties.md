@@ -317,6 +317,25 @@ flip) and `cc_double_count_cde2501_fail` (both pillars ⇒ fail).
 
 ---
 
+## MP-23. Internship overflow + UROP cap monotonicity
+**Property (a) overflow.** Adding internship units beyond the 10-unit major requirement never
+increases the satisfied major-internship total above 10; the excess only increases UE units.
+The major requirement saturates at 10.
+**Property (b) UROP cap.** The units of UROP/UREx (CDE2605/CDE2605R) credited to the major
+requirement never exceed 4, regardless of how many UROP/UREx units are present; extra UROP/UREx
+units spill to UE.
+
+**Rationale.** IAW — "up to 10 units ... the remaining will be counted towards Unrestricted
+Electives"; "A maximum of 4 units from UROP/UREx can count towards the major internship".
+
+**Test sketch.** `internship_overflow_to_ue_pass` (a); `internship_urop_cap_fail` (b). Also a
+metamorphic pair: add an extra EG3612 to a passing IA transcript — major status unchanged, UE +6.
+
+**Likely break.** Summing all internship-pool units into the major counter (no 10-unit cap, no
+UROP sub-cap), wrongly passing a UROP-heavy or internship-heavy transcript.
+
+---
+
 ## MP-20. Intake-parameterised TE eligibility
 **Property.** For the AY2024 cohort config, CG3207/EE3105/EE3305/EE3306/EE3703/EE3801 are
 TE-eligible; for an AY2025+ cohort config the same courses are UE-only. Swapping only the
@@ -357,3 +376,4 @@ an AY2025 config should fail. Confirms the rule is data-driven by intake, not ha
 | MP-20 | intake-parameterised TE eligibility | TE26 Note 3; GRB p.9 | cg3207_te_ay24_pass, ee3305_te_ay24_pass |
 | MP-21 | TC substitution unit-neutral | GRB p.4,12; FAQ Q4; CTK p.7 | cc_tc_count_not_inflated |
 | MP-22 | CDE2501 single-pillar exclusivity | FAQ Q5/Q6; GRB p.10 | cc_cde2501_*; cc_double_count_cde2501_fail |
+| MP-23 | internship overflow + UROP cap | IAW | internship_overflow_to_ue_pass; internship_urop_cap_fail |

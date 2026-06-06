@@ -135,6 +135,10 @@ Run `audit --allocation <f>`:
 - H6. `emerging_tech_not_set_elective_fail` → EE4032 is NOT a SET elective (A-09 ignore entirely).
 - H7. **Level-1000 cap** (`level1000_cap_exceeded_warn`) and internship-combo are now enforced
   (A-13), not advisory; S/U is out of scope.
+- H8. **Internship model:** `internship_ia_full_pass`, `internship_via_plus_vip_pass` (combo=10),
+  `internship_short_combo_fail` (8<10), `internship_urop_cap_fail` (UROP>4 to major),
+  `internship_overflow_to_ue_pass` (>10 spills to UE), `internship_poly_apc_pass` (EG3611P),
+  `internship_eg2605_alias_pass` (EG2605→CDE2605), `internship_ceg_only_course_fail` (CP* CEG-only).
 
 ### Layer G — Output-format & reporting contract
 - G1. `--format json` is valid JSON and contains: overall status, per-section status (Major,
@@ -175,6 +179,7 @@ Run `audit --allocation <f>`:
 | SEP residency 50%/60% | H5 (MP-19) |
 | Emerging Tech ignored (A-09) | H6 |
 | Level-1000 cap + internship enforced (A-13) | H7 |
+| Internship model (combos, UROP cap, UE overflow, poly APC) | H8 (MP-23) |
 
 ---
 

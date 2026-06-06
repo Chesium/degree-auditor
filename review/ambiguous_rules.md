@@ -248,6 +248,12 @@ title updates. See `rule_inventory.md` §3, §4, §5, §9, §14.
 > internship combination check. ignore S/U for now." Promote `LVL1000_MAX_60` and
 > `MAJOR_INTERNSHIP_COMBO` to enforced constraints (no longer `needs_human_review`). The S/U
 > option is explicitly out of scope for the prototype.
+>
+> The internship model was subsequently expanded from the CDE Engineering Internships page (IAW)
+> — see `rule_inventory.md` §2b. Beyond the combination check it now also enforces: the 4-unit
+> UROP/UREx sub-cap (`MAJOR_INTERNSHIP_UROP_CAP`), the 10-unit-to-major / overflow-to-UE rule
+> (`MAJOR_INTERNSHIP_UE_OVERFLOW`), the poly EG3611P APC, the CEG-only CP* exclusion, and the
+> EG2605→CDE2605 course-code alias. Combinations must reach 10 units (4+4=8 fails).
 
 ---
 

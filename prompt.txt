@@ -411,7 +411,13 @@ Specialisation courses can occupy UE space without consuming the specialisation'
 Enforce these (resolved from earlier ambiguities):
 
 * Level-1000 cap: no more than 60 units of level-1000 courses count toward the degree (excludes POY1901/2/3/8/9, POY1910T, CFG1010, ES1103, CFG1002, DYOC courses). Extra units beyond 60 do not count toward graduation but still count to GPA.
-* Internship (10 units) may be satisfied by combinations: EG3611A IA (10); or CFG2101 (4) + EG2605 UROP (4); or EG3612 VIA (6) + ...; or EG3611P (10, poly).
+* Internship: the major internship requirement is 10 units, drawn from the internship course pool. Model it fully (per the CDE Engineering Internships page):
+  * Course pool: EG3611A IA (10u), EG3612 VIA (6u), CFG2101 VIP (4u), CDE2605/CDE2605R UROP/UREx (4u each; EG2605 is the legacy code -> alias to CDE2605), ETP3201/3205/3206/3207 (NOC), EG3611P (10u, poly APC). CP3880/CP3200/CP3202 (ATAP/SIP) are CEG-only and NOT valid for the EE internship.
+  * The 10 units may be a single course or a combination summing to >=10, e.g. EG3611A (10); EG3612 (6) + CFG2101 (4); EG3612 (6) + CDE2605 (4). A combination short of 10 (e.g. 4 + 4 = 8) does not satisfy it.
+  * At most 4 units of UROP/UREx (CDE2605/CDE2605R) may count toward the major internship; excess UROP/UREx units go to UE.
+  * Up to 20 units of unit-bearing internships may be taken; at most 10 count toward the major requirement and the remainder counts toward UE (no double-credit to the major).
+  * Poly-direct-entry students receive APC for EG3611P (10u); they may still take up to 10 further internship units counted toward UE.
+  * Advisory: Stage 3 standing; IA/VIA graded CS/CU.
 * SEP residency: at least 50% of overall course units must be read at NUS; at least 60% of programme course requirements must be read at NUS.
 * S/U option / grade-free scheme is OUT OF SCOPE for this prototype.
 

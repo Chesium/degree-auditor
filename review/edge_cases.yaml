@@ -1403,3 +1403,177 @@ cases:
       - {document: CTK, page: 7, quote: "You may utilize the following space in the CDE Common Curriculum to read the 3 additional TC"}
       - {document: FAQ, page: 2, quote: "you will need to use your unrestricted elective space to read additional 3 technical courses"}
 
+  - id: internship_ia_full_pass
+    description: EG3611A Industrial Attachment (10 units) satisfies the major internship.
+    why_this_matters: Baseline single-course internship satisfaction (10u in one course).
+    assert_focus: MAJOR_INTERNSHIP_10
+    transcript:
+      courses:
+        - {course_code: EG3611A, units: 10, status: completed, source: NUS, grade: CS}
+    manual_allocation:
+      allocations:
+        - {course_code: EG3611A, requirement_id: MAJOR_INTERNSHIP, units: 10, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings: []
+    source_refs:
+      - {document: IAW, page: null, quote: "EG3611A Industrial Attachment (IA) 20 weeks 10 units"}
+
+  - id: internship_via_plus_vip_pass
+    description: EG3612 VIA (6u) + CFG2101 VIP (4u) = 10 units satisfies the major internship.
+    why_this_matters: >
+      Validates combination logic summing to exactly 10 units (MAJOR_INTERNSHIP_COMBO).
+    assert_focus: MAJOR_INTERNSHIP_COMBO
+    transcript:
+      courses:
+        - {course_code: EG3612, units: 6, status: completed, source: NUS, grade: CS}
+        - {course_code: CFG2101, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EG3612, requirement_id: MAJOR_INTERNSHIP, units: 6, allocation_role: primary, manual: true}
+        - {course_code: CFG2101, requirement_id: MAJOR_INTERNSHIP, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings: []
+    source_refs:
+      - {document: CHK, page: 2, quote: "Students from Cohort AY2021/2022 onwards can take a combination of the following to satisfy the 10 units"}
+
+  - id: internship_short_combo_fail
+    description: CFG2101 (4u) + CDE2605 UROP (4u) = 8 units; short of the 10-unit requirement.
+    why_this_matters: >
+      A combination must reach 10 units. 4+4=8 is short and must fail, even though both are
+      valid internship courses. Guards against "any two internship courses pass" bugs.
+    assert_focus: MAJOR_INTERNSHIP_COMBO (must reach 10u)
+    transcript:
+      courses:
+        - {course_code: CFG2101, units: 4, status: completed, source: NUS}
+        - {course_code: CDE2605, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: CFG2101, requirement_id: MAJOR_INTERNSHIP, units: 4, allocation_role: primary, manual: true}
+        - {course_code: CDE2605, requirement_id: MAJOR_INTERNSHIP, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: [MAJOR_INTERNSHIP_10]
+    expected_failed_constraints: []
+    expected_warnings:
+      - "Major internship: 8 / 10 units; combination is short of 10"
+    source_refs:
+      - {document: CHK, page: 2, quote: "take a combination of the following to satisfy the 10 units"}
+
+  - id: internship_urop_cap_fail
+    description: >
+      UROP + UREx (CDE2605 4u + CDE2605R 4u) used to claim 8 internship units, plus EG3612 (6u),
+      claiming 8 UROP-units toward the 10-unit major requirement.
+    why_this_matters: >
+      At most 4 units of UROP/UREx may count toward the major internship; the second 4 must go
+      to UE. Relying on 8 UROP units for the major requirement must fail MAJOR_INTERNSHIP_UROP_CAP.
+    assert_focus: MAJOR_INTERNSHIP_UROP_CAP
+    transcript:
+      courses:
+        - {course_code: CDE2605, units: 4, status: completed, source: NUS}
+        - {course_code: CDE2605R, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: CDE2605, requirement_id: MAJOR_INTERNSHIP, units: 4, allocation_role: primary, manual: true}
+        - {course_code: CDE2605R, requirement_id: MAJOR_INTERNSHIP, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: [MAJOR_INTERNSHIP_10]
+    expected_failed_constraints: [MAJOR_INTERNSHIP_UROP_CAP]
+    expected_warnings:
+      - "At most 4 units of UROP/UREx count toward the major internship; excess goes to UE"
+    source_refs:
+      - {document: IAW, page: null, quote: "A maximum of 4 units from UROP/UREx can count towards the major internship requirement"}
+
+  - id: internship_overflow_to_ue_pass
+    description: >
+      EG3611A (10u) for the major internship plus EG3612 (6u) extra; the extra 6 units count
+      toward UE, not a second internship requirement.
+    why_this_matters: >
+      Up to 20 internship units may be taken; only 10 count to the major requirement and the
+      remainder spills to UE. Verifies MAJOR_INTERNSHIP_UE_OVERFLOW (no double-credit to major).
+    assert_focus: MAJOR_INTERNSHIP_UE_OVERFLOW
+    transcript:
+      courses:
+        - {course_code: EG3611A, units: 10, status: completed, source: NUS, grade: CS}
+        - {course_code: EG3612, units: 6, status: completed, source: NUS, grade: CS}
+    manual_allocation:
+      allocations:
+        - {course_code: EG3611A, requirement_id: MAJOR_INTERNSHIP, units: 10, allocation_role: primary, manual: true}
+        - {course_code: EG3612, requirement_id: EE24JC_UE, units: 6, allocation_role: residual_ue, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "Internship units beyond 10 (EG3612: 6u) counted toward UE"
+    source_refs:
+      - {document: IAW, page: null, quote: "up to 10 units can be used to fulfil the major internship requirement and the remaining will be counted towards Unrestricted Electives"}
+
+  - id: internship_poly_apc_pass
+    description: Poly-direct-entry student with EG3611P APC (10u) satisfies the major internship.
+    why_this_matters: >
+      EG3611P is the poly APC variant. Verifies MAJOR_INTERNSHIP_POLY_APC and the EG3611P route.
+    assert_focus: MAJOR_INTERNSHIP_POLY_APC
+    transcript:
+      student_flags: [POLY]
+      courses:
+        - {course_code: EG3611P, units: 10, status: completed, source: APC}
+    manual_allocation:
+      allocations:
+        - {course_code: EG3611P, requirement_id: MAJOR_INTERNSHIP, units: 10, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings: []
+    source_refs:
+      - {document: IAW, page: null, quote: "Poly-Direct Entry students receive Advanced Placement Credits for EG3611P Industrial Attachment (10 units)"}
+
+  - id: internship_eg2605_alias_pass
+    description: >
+      Transcript uses the legacy code EG2605 (UROP) which must resolve to CDE2605, combined
+      with EG3612 (6u) to reach 10 units.
+    why_this_matters: >
+      The checklist lists EG2605 but the current code is CDE2605/CDE2605R. Alias resolution
+      (ALIAS_EG2605_CDE2605) must let a legacy EG2605 attempt count, still subject to the 4u
+      UROP cap.
+    assert_focus: ALIAS_EG2605_CDE2605 + MAJOR_INTERNSHIP_COMBO
+    transcript:
+      courses:
+        - {course_code: EG3612, units: 6, status: completed, source: NUS, grade: CS}
+        - {course_code: EG2605, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EG3612, requirement_id: MAJOR_INTERNSHIP, units: 6, allocation_role: primary, manual: true}
+        - {course_code: EG2605, requirement_id: MAJOR_INTERNSHIP, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "EG2605 resolved to CDE2605 (UROP); counts as 4 units (within UROP cap)"
+    source_refs:
+      - {document: CHK, page: 2, quote: "EG2605 Undergraduate Research Opportunities Programme UROP (4 units)"}
+      - {document: IAW, page: null, quote: "CDE2605 / CDE2605R Undergraduate Research Opportunities Programme (UROP) / Undergraduate Research Experience (UREx)"}
+
+  - id: internship_ceg_only_course_fail
+    description: An EE student tries to satisfy the internship with CP3200 (CEG-only ATAP/SIP).
+    why_this_matters: >
+      CP3880/CP3200/CP3202 are CEG-only and not valid for an EE-major internship.
+      Verifies MAJOR_INTERNSHIP_CEG_ONLY.
+    assert_focus: MAJOR_INTERNSHIP_CEG_ONLY
+    transcript:
+      courses:
+        - {course_code: CP3200, units: 6, status: completed, source: NUS}
+        - {course_code: CFG2101, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: CP3200, requirement_id: MAJOR_INTERNSHIP, units: 6, allocation_role: primary, manual: true}
+        - {course_code: CFG2101, requirement_id: MAJOR_INTERNSHIP, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: [MAJOR_INTERNSHIP_10]
+    expected_failed_constraints: [MAJOR_INTERNSHIP_CEG_ONLY]
+    expected_warnings:
+      - "CP3200 (ATAP/SIP) is CEG-only and not valid for the EE-major internship"
+    source_refs:
+      - {document: IAW, page: null, quote: "CP3880 / CP3200 / CP3202 ATAP / SIP Only applicable to CEG students"}
+

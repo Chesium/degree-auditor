@@ -12,6 +12,7 @@ and the additional resource PDFs. Sources used:
 - **CTK** = `resources/EE2_Curriculum_Talk_2025_13Aug2025.pdf` ("CTK p.N")
 - **TE26** = `resources/EE_TechElectives_AY2026_iii.pdf` (master TE list; course attributes + intake carve-outs)
 - **SEP** = `resources/ECE_SEP_Outgoing_AY2627_30Jan26.pdf`
+- **IAW** = CDE Engineering Internships — Student Info web page (`https://cde.nus.edu.sg/undergraduate/engineering-internships/student-info/`)
 
 Page numbers refer to the printed page markers in each PDF.
 Every rule below is something the implementation must be able to represent, evaluate, or explicitly mark as out-of-scope/ambiguous.
@@ -91,8 +92,39 @@ they do **not** add units beyond 160. These rules are the decision matrix from G
 | `CC_RC_EXCLUSION` | scope | The standard substitution table does **not** apply to RC4 / UTCP / NUSC / RVRC / poly-graduate students (different college mappings; e.g. RC4 Junior Seminar precludes IE2141). Flag `needs_human_review` if such a `student_flag` is present. | FAQ table note + Q7; GRB p.17 |
 | `UE_40` | requirement | Unrestricted Electives = 40 units; "build your own degree" / residual capacity. | CHK p.2 ("40 units"); PRM 30 |
 | `MAJOR_60` | requirement | Major Requirements = 60 units total. | CHK p.2; PRM 31 |
-| `MAJOR_ENGCORE_20` | requirement | Engineering Core = 20 units: MA1511 (2), MA1512 (2), MA1508E (4), EG2401A (2), EG3611A internship (10). | CHK p.2 |
-| `MAJOR_INTERNSHIP_COMBO` | requirement | **(A-13 RESOLVED: enforce.)** The 10-unit internship may be satisfied by combinations: CFG2101 (4) + EG2605 UROP (4), EG3611A IA (10), EG3612 VIA (6), EG3611P (10, poly). | CHK p.2 |
+| `MAJOR_ENGCORE_20` | requirement | Engineering Core = 20 units: MA1511 (2), MA1512 (2), MA1508E (4), EG2401A (2), internship (10, see §2b). | CHK p.2 |
+| `MAJOR_INTERNSHIP_10` | requirement | **(A-13 RESOLVED: enforce.)** Major internship requirement = **10 units**, drawn from the internship course pool (§2b). | CHK p.2; IAW |
+
+See **§2b** for the full internship model (course pool, combinations, UROP cap, UE overflow,
+poly APC). The single-line model previously here was incomplete.
+
+---
+
+## 2b. Major internship (10 units) — full model
+
+Authoritative detail from the CDE Engineering Internships page (IAW), which supersedes/extends
+the checklist footnote. Internships need not be related to the student's discipline.
+
+**Internship course pool** (unit-bearing):
+
+| course | programme | units | notes |
+|--------|-----------|-------|-------|
+| EG3611A | Industrial Attachment (IA), 20 wks | 10 | graded CS/CU |
+| EG3612 | Vacation Industrial Attachment (VIA), 12 wks | 6 | graded CS/CU |
+| CFG2101 | Vacation Internship Programme (VIP), 10 wks | 4 | |
+| CDE2605 / CDE2605R | UROP / UREx | 4 each | **was EG2605 on the checklist** — see alias |
+| ETP3201 / ETP3205 / ETP3206 / ETP3207 | Start-up / Innovation & Enterprise Internship (NOC) | varies | |
+| CP3880 / CP3200 / CP3202 | ATAP / SIP | varies | **CEG students only** — out of scope for EE |
+| EG3611P | Industrial Attachment (poly) | 10 | poly-direct-entry APC |
+
+| id | kind | description | source |
+|----|------|-------------|--------|
+| `MAJOR_INTERNSHIP_COMBO` | policy | The 10 units may be met by **one course or a combination** summing to ≥10, e.g. EG3611A (10); EG3612 (6) + CFG2101 (4); EG3612 (6) + CDE2605 UROP (4). A combination short of 10 (e.g. CFG2101 4 + CDE2605 4 = 8) does **not** satisfy it. | CHK p.2; IAW |
+| `MAJOR_INTERNSHIP_UROP_CAP` | constraint | At most **4 units** from UROP/UREx (CDE2605/CDE2605R) may count toward the major internship requirement. If both UROP and UREx are taken, the other 4 units go to UE. | IAW — **new** |
+| `MAJOR_INTERNSHIP_UE_OVERFLOW` | policy | Up to **20 units** of unit-bearing internships may be taken; at most **10** count toward the major requirement and the remainder counts toward **UE**. | IAW — **new** |
+| `MAJOR_INTERNSHIP_POLY_APC` | policy | Poly-direct-entry students receive APC for EG3611P (10u, satisfies the requirement) but may still take up to 10 further internship units, counted toward UE. | CHK p.3; IAW |
+| `MAJOR_INTERNSHIP_CEG_ONLY` | data | CP3880 / CP3200 / CP3202 (ATAP/SIP) are **CEG-only**; not valid for EE-major internship. | IAW — **new** |
+| `MAJOR_INTERNSHIP_ELIGIBILITY` | policy | Advisory: student should be at/expected Stage 3 standing (completed/expected Stage 2). IA/VIA graded CS/CU; a CU may require repeating if needed for graduation. | IAW — **advisory** |
 | `MAJOR_PROG_40` | requirement | Major Programme = 40 units (8 fixed/choice core courses @4u = 32u + 2 TE @4u = 8u). | CHK p.2 |
 | `LVL1000_MAX_60` | constraint | **(A-13 RESOLVED: enforce.)** No more than 60 units of level-1000 courses count toward the degree (excludes POY190x, CFG1010, ES1103, CFG1002, DYOC). Extra units excluded from graduation total but still count to GPA. | CHK p.3 |
 | `SU_OPTION` | scope | **Out of scope for prototype (A-13).** S/U option / grade-free scheme not modelled. | CHK p.3; A-13 |
@@ -251,6 +283,7 @@ they do **not** add units beyond 160. These rules are the decision matrix from G
 | `ALIAS_EE4436_MLE4207` | MLE4207 OR EE4436 (Fabrication Process Technology) — alternatives in MQM. | SPC p.11; TE26 (anti-req EE4436/MLE4207) |
 | `ALIAS_EE4802_IE4213` | EE4802 = IE4213 (Learning from Data); anti-req of EE4211. | SPC p.12, p.14; TE26 p.4 |
 | `ALIAS_GEA1000_GER1000` | GEA1000 = former GER1000 (Data Literacy pillar). | CHK p.1 |
+| `ALIAS_EG2605_CDE2605` | EG2605 (checklist) = CDE2605 / CDE2605R (UROP/UREx, current code). Resolve EG2605 to CDE2605 for internship eligibility. | CHK p.2 vs IAW |
 
 **Alias note:** resolving a non-EE twin (e.g. ME3243→EE3305) grants **Specialisation/UE**
 eligibility only; it never makes the course TE-eligible (`TE_EXCLUDE_NON_EE`).
