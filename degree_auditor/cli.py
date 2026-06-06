@@ -113,7 +113,7 @@ def interactive_allocate_command(
 
     if run_audit:
         result = audit(loaded, courses, selected_allocations, student_flags=student_flags)
-        _emit_audit_result(loaded, result, audit_format)
+        _emit_audit_result(loaded, result, audit_format, courses=courses, config_path_count=len(config))
 
 
 @app.command("list-requirements")
@@ -159,6 +159,20 @@ def list_specialisations_command(config: ConfigOption) -> None:
     console.print(table)
 
 
+@app.command("list-constraints")
+def list_constraints_command(config: ConfigOption) -> None:
+    try:
+        loaded = load_config(config)
+    except (ConfigLoadError, ValidationError, ValueError) as exc:
+        typer.echo(f"Invalid input: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    for constraint in loaded.constraints:
+        source = constraint.source_ref.document
+        if constraint.source_ref.page is not None:
+            source = f"{source}:p{constraint.source_ref.page}"
+        console.print(f"{constraint.id}\t{constraint.constraint_type}\t{constraint.description}\t{source}")
+
+
 @app.command("audit")
 def audit_command(
     config: ConfigOption,
@@ -177,11 +191,18 @@ def audit_command(
         typer.echo(f"Invalid input: {exc}", err=True)
         raise typer.Exit(1) from exc
     result = audit(loaded, courses, allocations, student_flags=student_flags)
-    _emit_audit_result(loaded, result, output_format)
+    _emit_audit_result(loaded, result, output_format, courses=courses, config_path_count=len(config))
 
 
-def _emit_audit_result(loaded, result, output_format: str) -> None:
-    contract = to_contract_result(loaded, result)
+def _emit_audit_result(loaded, result, output_format: str, *, courses=None, config_path_count: int = 1) -> None:
+    scope_mode = "auto" if output_format in {"json", "yaml"} else "full"
+    contract = to_contract_result(
+        loaded,
+        result,
+        courses=courses,
+        scope_mode=scope_mode,
+        config_path_count=config_path_count,
+    )
     if output_format == "json":
         typer.echo(json.dumps(contract, indent=2))
     elif output_format == "yaml":

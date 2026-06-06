@@ -157,6 +157,51 @@ def test_audit_contract_known_id_vocabulary(tmp_path: Path) -> None:
     assert {"SEP_TE_ONE_NUS", "SEP_TE_MAX_ONE_MAPPED"} <= sep_failed
 
 
+def test_contract_warnings_and_failed_requirement_source_refs(tmp_path: Path) -> None:
+    transcript = tmp_path / "tc_short.yaml"
+    transcript.write_text(
+        yaml.safe_dump({"courses": [{"course_code": "EE3131C"}]}, sort_keys=False),
+        encoding="utf-8",
+    )
+    allocations = tmp_path / "tc_short_allocations.yaml"
+    allocations.write_text(
+        yaml.safe_dump(
+            {"allocations": [{"course_code": "EE3131C", "requirement_id": "EE24JC_TC"}]},
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    result = _invoke_audit(
+        "--transcript",
+        str(transcript),
+        "--allocation",
+        str(allocations),
+        "--format",
+        "json",
+    )
+
+    assert result.exit_code == 2
+    payload = json.loads(result.output)
+    assert "TC_MIN_3" in payload["failed_requirements"]
+    failed_tc = next(item for item in payload["requirements"] if item["id"] == "TC_MIN_3")
+    assert failed_tc["source_ref"]["document"] == "L_AY24JC_Checklist_Revised_3TC_4June2025.pdf"
+    assert "Technical Courses: 1 / 3 completed" in payload["warnings"]
+    assert (
+        "Failed requirement TC_MIN_3 must include source_ref {document: CHK, page: 1}"
+        in payload["warnings"]
+    )
+
+
+def test_list_constraints_cli_smoke() -> None:
+    result = CliRunner().invoke(app, ["list-constraints", "--config", str(CONFIG)])
+
+    assert result.exit_code == 0
+    assert "EE24JC_TC_MIN_3" in result.output
+    assert "EE24JC_TE_SEP_ONE_NUS" in result.output
+    assert "L_AY24JC_Checklist" in result.output
+
+
 def _invoke_audit(*extra_args: str):
     args = [
         "audit",

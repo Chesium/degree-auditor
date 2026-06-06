@@ -22,16 +22,9 @@ INVALID_INPUT_CONSTRAINTS = {
 
 
 UNSUPPORTED_CASES = {
-    "major_core_pass_basic": "review fixture expects scoped major pass; current contract reports whole-audit pass",
-    "tc_te_mutual_exclusion_fail": "review warning text contract is stricter than the current emitted warning",
     "ee2026_ee2028_choice_tc_success": "review uses final slot id EE24JC_MAJOR_DIGITAL; current input model uses an internal id",
     "ee2026_both_to_major_and_tc_fail": "single-instance double-use validation beyond TC/TE is not implemented",
-    "ee3031_not_te_fail": "review warning text contract is stricter than the current emitted warning",
-    "ee3033_not_te_fail": "review warning text contract is stricter than the current emitted warning",
-    "tc_only_3_courses_pass": "review fixture expects scoped TC pass; current contract reports whole-audit pass",
-    "tc_only_2_courses_fail": "review warning text contract is stricter than the current emitted warning",
     "ae_core_overlap_with_tc_within_budget": "review fixture expects scoped specialisation pass; current contract reports whole-audit pass",
-    "ae_core_tc_te_conflict": "review warning text contract is stricter than the current emitted warning",
     "robotics_coursework_only_pass": "review fixture expects scoped specialisation pass; current contract reports whole-audit pass",
     "robotics_capstone_path_pass": "review fixture expects scoped specialisation pass; current contract reports whole-audit pass",
     "robotics_capstone_untagged_fail": "robotics topic-tag failure ID is not part of the current public contract",
@@ -41,18 +34,13 @@ UNSUPPORTED_CASES = {
     "mqm_ee2027_overlap_budget": "review fixture expects scoped MQM pass; current contract reports whole-audit pass",
     "mqm_overlap_exceeds_budget_fail": "MQM capstone lock public ID is not emitted for the review slot vocabulary yet",
     "sep_te_one_nus_one_sep_pass": "review fixture expects scoped TE SEP pass; current contract reports whole-audit pass",
-    "sep_te_all_sep_fail": "review warning text contract is stricter than the current emitted warning",
     "sep_specialisation_max_8_units_pass": "review fixture expects scoped specialisation SEP pass; current contract reports whole-audit pass",
     "sep_specialisation_over_8_units_fail": "SEP max-8 public ID is not emitted for the review slot vocabulary yet",
     "sep_same_course_two_specialisations_fail": "SEP no-reuse public ID is not emitted for the review slot vocabulary yet",
     "ue_residual_does_not_consume_overlap": "review fixture expects scoped overlap pass; current contract reports whole-audit pass",
-    "manual_override_changes_greedy_choice": "manual override warning contract is not implemented",
     "spt_idp_path_inactive_without_flag_fail": "SPT IDP inactive-path public IDs are not aligned yet",
     "spt_idp_eg4301_units_not_counted": "SPT EG4301 exclusion is not implemented",
     "capstone_double_count_two_specs_fail": "cross-specialisation capstone single-instance rule is not implemented",
-    "config_merge_identical_ok": "review fixture expects scoped config pass; current audit contract reports whole-audit pass",
-    "source_ref_preserved_on_failure": "source-ref edge fixture expects scoped TC reporting",
-    "order_independence_check": "review fixture expects scoped major pass; current contract reports whole-audit pass",
 }
 
 
