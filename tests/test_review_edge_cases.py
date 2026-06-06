@@ -22,7 +22,6 @@ INVALID_INPUT_CONSTRAINTS = {
 
 
 UNSUPPORTED_CASES = {
-    "ee2026_ee2028_choice_tc_success": "review uses final slot id EE24JC_MAJOR_DIGITAL; current input model uses an internal id",
     "ee2026_both_to_major_and_tc_fail": "single-instance double-use validation beyond TC/TE is not implemented",
     "ae_core_overlap_with_tc_within_budget": "review fixture expects scoped specialisation pass; current contract reports whole-audit pass",
     "robotics_coursework_only_pass": "review fixture expects scoped specialisation pass; current contract reports whole-audit pass",

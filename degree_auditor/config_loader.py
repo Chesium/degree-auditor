@@ -5,6 +5,7 @@ from typing import Any, Iterable
 
 import yaml
 
+from degree_auditor.id_registry import normalize_allocation_payload
 from degree_auditor.merge import merge_config_fragments
 from degree_auditor.models import Allocation, CourseAttempt, DegreeAuditConfig
 
@@ -40,7 +41,10 @@ def load_allocations(path: str | Path) -> list[Allocation]:
     allocations = data.get("allocations")
     if allocations is None:
         raise ConfigLoadError(f"Allocation file {path} must contain allocations")
-    return [Allocation.model_validate({**item, "manual": item.get("manual", True)}) for item in allocations]
+    return [
+        Allocation.model_validate(normalize_allocation_payload({**item, "manual": item.get("manual", True)}))
+        for item in allocations
+    ]
 
 
 def _expand_paths(paths: Iterable[str | Path]) -> list[Path]:

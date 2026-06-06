@@ -6,6 +6,7 @@ from degree_auditor.allocation import UE_RESIDUAL_REQUIREMENT_ID
 from degree_auditor.allocation_choices import IGNORED_REQUIREMENT_ID
 from degree_auditor.common_curriculum import EE24JC_UE
 from degree_auditor.eligibility import canonical_code
+from degree_auditor.id_registry import PUBLIC_SLOT_IDS, normalize_slot_id
 from degree_auditor.internship import MAJOR_INTERNSHIP_SLOT
 from degree_auditor.models import Allocation, CourseAttempt, DegreeAuditConfig
 from degree_auditor.specialisations import IDP_SECOND_MAJOR_REQUIREMENT_ID, REQUIREMENT_SLOT_ALIASES
@@ -55,6 +56,8 @@ def _known_requirement_ids(config: DegreeAuditConfig) -> set[str]:
     requirement_ids.update({UE_RESIDUAL_REQUIREMENT_ID, EE24JC_UE, IGNORED_REQUIREMENT_ID})
     requirement_ids.update({MAJOR_INTERNSHIP_SLOT, IDP_SECOND_MAJOR_REQUIREMENT_ID})
     requirement_ids.update(REQUIREMENT_SLOT_ALIASES)
+    requirement_ids.update(PUBLIC_SLOT_IDS)
+    requirement_ids.update(normalize_slot_id(slot_id) for slot_id in PUBLIC_SLOT_IDS)
     return requirement_ids
 
 

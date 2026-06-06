@@ -6,74 +6,13 @@ from typing import Any
 from degree_auditor.allocation import plan_allocations
 from degree_auditor.audit import MAJOR_PROGRAMME_ID
 from degree_auditor.allocation import FIXED_MAJOR_CORE_REQUIREMENT_ID, UE_RESIDUAL_REQUIREMENT_ID
+from degree_auditor.id_registry import map_requirement_id
 from degree_auditor.models import Allocation, AuditResult, ConstraintResult, CourseAttempt, DegreeAuditConfig, SourceRef
 from degree_auditor.ordering import contract_row_key, sort_allocations
 
 
 COHORT_ID = "nus_ee_ay24_jc"
 TOTAL_UNITS = 160
-
-REQUIREMENT_ID_MAP = {
-    "EE24JC_TC": "TC_MIN_3",
-    "EE24JC_TE": "TE_MIN_2",
-    "EE24JC_UE": "UE_40",
-    UE_RESIDUAL_REQUIREMENT_ID: "UE_40",
-    "EE24JC_MAJOR_DIGITAL_CHOICE": "MAJ_DIGITAL_CHOICE",
-    FIXED_MAJOR_CORE_REQUIREMENT_ID: "MAJOR_60",
-    MAJOR_PROGRAMME_ID: "MAJOR_60",
-    "DEG_TOTAL_160": "DEG_TOTAL_160",
-    "CDE_COMMON_CURRICULUM": "CC_CDE_60",
-    "UE_40": "UE_40",
-    "MAJOR_60": "MAJOR_60",
-    "MAJOR_INTERNSHIP": "MAJOR_INTERNSHIP_10",
-    "MAJOR_INTERNSHIP_10": "MAJOR_INTERNSHIP_10",
-    "CC_GE_GESS": "CC_GE_GESS",
-    "CC_GE_GEC": "CC_GE_GEC",
-    "CC_GE_GEN": "CC_GE_GEN",
-    "CC_GE_ES2631": "CC_GE_ES2631",
-    "CC_GE_CS1010E": "CC_GE_CS1010E",
-    "CC_GE_GEA1000": "CC_GE_GEA1000",
-    "CC_ISK_DTK1234": "CC_ISK_DTK1234",
-    "CC_ISK_MAKER": "CC_ISK_MAKER",
-    "CC_ISK_ST": "CC_ISK_ST",
-    "CC_ISK_AI": "CC_ISK_AI",
-    "CC_ISK_SF": "CC_ISK_SF",
-    "CC_ISK_CN": "CC_ISK_CN",
-    "CC_ISK_PM": "CC_ISK_PM",
-    "CC_ISK_CAPSTONE": "CC_CAPSTONE",
-    "CC_CAPSTONE": "CC_CAPSTONE",
-    "AE_CORE": "AE_CORE",
-    "AE_ELECTIVE": "AE_ELECTIVES_MIN_3",
-    "AE_ELECTIVES": "AE_ELECTIVES_MIN_3",
-    "IND4_CORE": "IND4_CORE",
-    "IND4_CORE_CONTROL": "IND4_CORE",
-    "IND4_CORE_AUTOMATION": "IND4_CORE",
-    "IND4_CORE_DATA": "IND4_CORE",
-    "IND4_ELECTIVE": "IND4_ELECTIVES_MIN_3",
-    "IND4_ELECTIVES": "IND4_ELECTIVES_MIN_3",
-    "IOT_CORE": "IOT_CORE",
-    "IOT_ELECTIVE": "IOT_ELECTIVES_MIN_2_OR_8U",
-    "IOT_ELECTIVES": "IOT_ELECTIVES_MIN_2_OR_8U",
-    "IOT_PROJECT": "IOT_ELECTIVES_MIN_2_OR_8U",
-    "IOT_PROJECT_OPTIONS": "IOT_ELECTIVES_MIN_2_OR_8U",
-    "MQM_CORE": "MQM_CORE",
-    "MQM_ELECTIVE": "MQM_ELECTIVES_MIN_3_OR_12U",
-    "MQM_ELECTIVES": "MQM_ELECTIVES_MIN_3_OR_12U",
-    "MQM_PROJECT_OPTIONS": "MQM_ELECTIVES_MIN_3_OR_12U",
-    "RBT_BASKET": "RBT_PATH1_CAPSTONE",
-    "RBT_ELECTIVES_12_UNITS": "RBT_PATH1_CAPSTONE",
-    "RBT_ELECTIVES_20_UNITS": "RBT_PATH2_COURSEWORK",
-    "RBT_CAPSTONE": "RBT_PATH1_CAPSTONE",
-    "SET_CORE": "SET_CORE",
-    "SET_ELECTIVE": "SET_ELECTIVES_MIN_2",
-    "SET_ELECTIVES": "SET_ELECTIVES_MIN_2",
-    "SPT_CORE": "SPT_CORE",
-    "SPT_ELECTIVE": "SPT_ELECTIVES_MIN_2",
-    "SPT_ELECTIVES": "SPT_ELECTIVES_MIN_2",
-    "SPT_SATELLITE_CAPSTONE": "SPT_CORE",
-    "SPT_IDP_REPLACEMENT_ELECTIVES": "SPT_IDP_PATH",
-    "CDE_CAPSTONE": "CC_CAPSTONE",
-}
 
 CONSTRAINT_ID_MAP = {
     "EE24JC_TC_TE_MUTUAL_EXCLUSION": "TC_NOT_TE",
@@ -140,12 +79,6 @@ def to_contract_result(
             for allocation in sort_allocations(result.allocations)
         ],
     }
-
-
-def map_requirement_id(requirement_id: str) -> str:
-    if requirement_id.startswith("SPECIALISATION_"):
-        return requirement_id
-    return REQUIREMENT_ID_MAP.get(requirement_id, requirement_id)
 
 
 def map_constraint_id(constraint_id: str) -> str:
@@ -363,6 +296,17 @@ def _infer_contract_scope(
                 "TE_EXCLUDE_NON_EE",
                 "SEP_TE_ONE_NUS",
                 "SEP_TE_MAX_ONE_MAPPED",
+                "MANUAL_ALLOC_INELIGIBLE",
+            },
+        )
+
+    major_choice_tc_requirements = {"MAJ_DIGITAL_CHOICE", "TC_MIN_3"}
+    if manual_allocations and mapped_manual_requirement_ids <= major_choice_tc_requirements:
+        return _ContractScope(
+            major_choice_tc_requirements,
+            {
+                "TC_NOT_TE",
+                "TC_EFFECTIVE_DATE_EE3033",
                 "MANUAL_ALLOC_INELIGIBLE",
             },
         )
