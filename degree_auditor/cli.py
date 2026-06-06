@@ -13,6 +13,12 @@ from degree_auditor.allocation import plan_allocations
 from degree_auditor.audit import audit
 from degree_auditor.config_loader import load_allocations, load_config, load_student_flags, load_transcript
 from degree_auditor.eligibility import expand_eligibility
+from degree_auditor.interactive_allocation import (
+    allocations_for_selection,
+    choices_for_transcript,
+    parse_selection,
+    write_commented_allocation_yaml,
+)
 from degree_auditor.reporting import render_audit_report
 
 
@@ -58,6 +64,57 @@ def plan_allocation_command(
     payload = {"allocations": [allocation.model_dump(mode="json") for allocation in allocations]}
     out.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
     console.print(f"[green]Wrote allocation plan[/green]: {out}")
+
+
+@app.command("interactive-allocate")
+def interactive_allocate_command(
+    config: ConfigOption,
+    transcript: Annotated[Path, typer.Option("--transcript", "-t")],
+    out: Annotated[Path, typer.Option("--out", "-o")],
+    run_audit: Annotated[bool, typer.Option("--audit", help="Run audit after writing the allocation YAML.")] = False,
+    audit_format: Annotated[str, typer.Option("--audit-format", help="Audit output format: text or json.")] = "text",
+) -> None:
+    loaded = load_config(config)
+    courses = load_transcript(transcript)
+    student_flags = load_student_flags(transcript)
+    choices_by_course = choices_for_transcript(loaded, courses)
+    allocations_by_course = {}
+    selected_allocations = []
+
+    for course in courses:
+        choices = choices_by_course[course.course_code]
+        table = Table(title=f"{course.course_code} ({course.effective_code}, {course.units} units)")
+        table.add_column("#")
+        table.add_column("Requirement")
+        table.add_column("Description")
+        for index, choice in enumerate(choices, start=1):
+            table.add_row(str(index), choice.requirement_id, choice.description)
+        console.print(table)
+
+        while True:
+            raw_selection = typer.prompt("Choose allocation number(s), comma-separated; blank = UE_RESIDUAL", default="")
+            try:
+                selected_numbers = parse_selection(raw_selection, choices)
+            except ValueError as exc:
+                console.print(f"[red]{exc}[/]")
+                continue
+            break
+
+        allocations = allocations_for_selection(course, choices, selected_numbers)
+        allocations_by_course[course.course_code] = allocations
+        selected_allocations.extend(allocations)
+
+    write_commented_allocation_yaml(out, courses, choices_by_course, allocations_by_course)
+    console.print(f"[green]Wrote interactive allocation[/green]: {out}")
+
+    if run_audit:
+        result = audit(loaded, courses, selected_allocations, student_flags=student_flags)
+        if audit_format == "json":
+            typer.echo(json.dumps(result.model_dump(mode="json"), indent=2))
+            return
+        if audit_format != "text":
+            raise typer.BadParameter("audit-format must be text or json")
+        render_audit_report(loaded, result, console=console)
 
 
 @app.command("list-requirements")

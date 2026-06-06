@@ -12,7 +12,7 @@ The prototype currently models:
 - Technical Course (TC) and Technical Elective (TE) eligibility and mutual exclusion.
 - Course aliases, wildcard pools, SEP mapped equivalents, and source-aware YAML config merging.
 - Selected EE specialisation satisfaction, overlap budget, capstone lock, and SEP mapping rules.
-- Greedy allocation, manual allocation override, JSON audit output, and Rich terminal reports.
+- Greedy allocation, interactive allocation, manual allocation override, JSON audit output, and Rich terminal reports.
 
 It does not replace faculty, department, or registrar checks.
 
@@ -48,6 +48,25 @@ uv run degree-auditor plan-allocation \
   --config configs/nus_ee_ay24_jc \
   --transcript examples/transcripts/simple_completed.yaml \
   --out tmp/allocation.yaml
+```
+
+Create an interactive allocation plan with eligibility comments:
+
+```bash
+uv run degree-auditor interactive-allocate \
+  --config configs/nus_ee_ay24_jc \
+  --transcript examples/transcripts/simple_completed.yaml \
+  --out tmp/allocation.yaml
+```
+
+Create an interactive allocation plan and immediately audit it:
+
+```bash
+uv run degree-auditor interactive-allocate \
+  --config configs/nus_ee_ay24_jc \
+  --transcript examples/transcripts/simple_completed.yaml \
+  --out tmp/allocation.yaml \
+  --audit
 ```
 
 Audit with generated allocation:
@@ -105,6 +124,8 @@ courses:
 
 Manual allocation files use top-level `allocations`. When supplied to `audit --allocation`, the manual allocation fully replaces greedy allocation.
 
+The `interactive-allocate` command can generate this file by prompting through each transcript course. It writes comments before each course allocation block showing the eligibility expansion used during selection.
+
 ```yaml
 allocations:
   - course_code: EE2028
@@ -115,6 +136,7 @@ allocations:
     requirement_id: EE24JC_TC
     units: 4
     allocation_role: primary
+  # EE4308 eligibility: EE24JC_TE, RBT_ELECTIVES_20_UNITS, UE_RESIDUAL, IGNORED
   - course_code: EE4308
     requirement_id: EE24JC_TE
     units: 4
