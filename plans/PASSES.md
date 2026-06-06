@@ -61,3 +61,85 @@ Expand README with scope, unofficial warning, install, CLI usage, transcript YAM
 Add .gitignore for .venv, __pycache__, .pytest_cache, temp allocation outputs.
 Clean any generated cache artifacts from version control.
 Final full-suite uv run pytest and CLI smoke pass.
+
+Pass 9: Public Contract Alignment
+
+Add contract output shape while preserving existing internal models.
+Add pass, cohort, total_units, detailed requirements, constraints, failed_constraints, specialisations.
+Add ID mapping from internal slot IDs to review IDs using edge_cases.yaml meta.slot_to_requirement.
+Add audit exit code semantics: 0 pass, 2 audit fail, 1 invalid input/config.
+Add --format yaml.
+Tests: trivial JSON schema, failed audit exit 2, invalid input exit 1, known ID vocabulary.
+
+
+Pass 10: Edge Case Harness
+
+Add tests_blackbox/ or tests/test_review_edge_cases.py.
+Load review/edge_cases.yaml, apply defaults, materialize temp transcript/allocation/config overlay.
+Assert subset semantics from meta.assertion_semantics.
+Initially mark unsupported categories with focused xfail only where implementation has not reached that pass.
+This becomes the verification spine for all later passes.
+
+
+Pass 11: Common Curriculum + UE + Total Units
+
+Add CC requirements/pools/config for GE and ISK pillars.
+Implement DEG_TOTAL_160, CC_CDE_60, UE_40, MAJOR_60.
+Implement CDE2501 dual-role logic and TC-in-lieu ST/CN/SF.
+Implement RC/college/poly human-review flags.
+Tests from edge cases: CDE2501 branches, IE2141 XOR TC, RC4 substitution warning, TC count not inflated.
+
+
+Pass 12: Internship + Level-1000
+
+Add internship course pool and aliases.
+Implement MAJOR_INTERNSHIP_10, combo units, UROP cap, UE overflow, poly APC, CEG-only exclusions.
+Implement LVL1000_MAX_60.
+Tests: all internship cases in edge_cases.yaml, level-1000 cap warning/fail behavior.
+
+
+Pass 13: Course Catalog Corrections + Aliases
+
+Update aliases and pools from rule_inventory.md.
+Implement asymmetric alias handling: non-EE twins can satisfy specialisation/UE but not EE TE.
+Add CG3207 AY2024 TE carve-out.
+Add EE3033 term gate.
+Add non-EE TE exclusion constraint.
+Tests: ME3243/EE3305, ME3163/EE3306, ME3142, CG3207, EE3033 effective date.
+
+
+Pass 14: Specialisation Completion Corrections
+
+Update all seven specialisation configs to match inventory.
+Implement IoT full satisfaction.
+Correct Robotics basket, SPT basket/path, SET exclusions, MQM alternatives/project options, Industry 4.0 core/electives.
+Implement CDE4301/CDE4301A vs IDP second-major conflict.
+Tests: IoT, Robotics aliases, Emerging Tech exclusion, CDE4301 conflict, corrected baskets.
+
+
+Pass 15: SEP Residency + SEP/TC Refinements
+
+Implement SEP_RESIDENCY_50 and SEP_PROGRAMME_60.
+Make SEP-to-TC an explicit, source-ref’d rule for AY23/AY24.
+Ensure extra SEP TEs can go to UE but not Major TE.
+Tests: SEP residency below 50, SEP programme 60, SEP mapped to TC.
+
+
+Pass 16: Manual Allocation Validation
+
+Add validation before audit:
+unknown course
+unknown requirement
+allocation units exceed attempt units
+ineligible target
+duplicate single-instance double-use
+Return exit 1 for invalid input via CLI.
+Tests: manual_alloc_unknown_course_error, manual_alloc_units_exceed_attempt_error, manual_alloc_ineligible_requirement_fail.
+
+
+Pass 17: Reporting + Determinism
+
+Align text report sections with black-box snapshots.
+Include missing courses/units, overlap, capstone lock, SEP mapped units, manual warnings.
+Add deterministic ordering for transcript/config/allocation output.
+Tests: snapshot/substrings, repeated JSON identical, plan-allocation round-trip.
