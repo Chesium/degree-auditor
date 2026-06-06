@@ -4,10 +4,11 @@ Goal: validate the CLI's externally observable behaviour **without reading the s
 We treat the package as a binary that consumes config folders, transcript YAML, and optional
 manual-allocation YAML, and emits text/JSON/YAML reports plus exit codes.
 
-All assertions below are derived only from the two PDFs and `prompt.txt`. Where a rule is
-ambiguous (see `ambiguous_rules.md`), the test asserts the *conservative* behaviour and is
-marked `[ambiguous]` so it can be downgraded to `xfail` if the implementation chose a
-different documented interpretation.
+All assertions below are derived from the resource PDFs and `prompt.txt`. The 17 prior
+ambiguities are now **resolved** (`ambiguous_human_review.md` + new resources), so most
+`[ambiguous]` tags are removed; the few items still marked `[default]` adopted a recommended
+default without an explicit "solved" stamp (A-02, A-04, A-10, A-15) and may be flipped to
+`xfail` only if the implementation documents a different choice.
 
 ---
 
@@ -75,10 +76,17 @@ emitted ID are reported as findings, not silently remapped.
 - B1. `expand-eligibility` for a transcript containing EE3331C must list EE3331C as eligible
   for **all** of: TC, TE, Industry 4.0 core, SPT elective (PRM 112 names this exact example).
 - B2. EE2027 must be eligible for both Major core and MQM core.
-- B3. EE3033 must be eligible for TC but **not** TE.
+- B3. EE3033 must be eligible for TC but **not** TE (and not as an Extended Core).
 - B4. EE3031 must be eligible for UE but **not** TE.
 - B5. Eligibility must be order-independent and not yet make allocation decisions
   (eligibility ≠ allocation, PRM 109).
+- B6. **Closed TC pool:** a course outside the closed set (e.g. EE3801) must NOT be TC-eligible
+  (A-01). Only {unused EE2026/EE2028, EE3033, EE3131C, EE3408C, EE3331C, EE3431C, EE3731C,
+  EE3104C} are TC-eligible.
+- B7. **Non-EE not TE:** ME3243/ME3163/ME3142/ME4245/RB4301 and CSxxxxDE are eligible for
+  Specialisation/UE but **not** the EE TE rule (TE26 Note 2).
+- B8. **Intake carve-out:** for the AY2024 config, CG3207/EE3105/EE3305/EE3306/EE3703/EE3801
+  ARE TE-eligible (TE26 Note 3 / GRB p.9).
 
 ### Layer C — Greedy audit (no manual allocation)
 Run `audit --format json` on transcript-only fixtures and assert pass/fail + IDs:
@@ -110,11 +118,23 @@ Run `audit --allocation <f>`:
 - E6. `spt_capstone_sep_forbidden_fail` → fail (capstone ⇒ no SEP for that spec).
 
 ### Layer F — Aliases & topic tags
-- F1. `alias_ee3305_me3243_robotics_basket` → pass (ME3243 resolved to EE3305).
-- F2. `alias_ee3306_me3163_double_count_fail` → fail (no double-credit) `[ambiguous A-?]`.
+- F1. `alias_ee3305_me3243_robotics_basket` → pass for the Robotics basket (ME3243 resolved to
+  EE3305 for Specialisation eligibility **only**).
+- F2. `alias_ee3306_me3163_double_count_fail` → fail (no double-credit).
 - F3. `robotics_capstone_path_pass` → satellite/robotics topic tag honoured.
-- F4. `iot_electives_units_equivalent_pass` → 8-unit single project satisfies electives
-  `[ambiguous A-08]`.
+- F4. `iot_electives_units_equivalent_pass` → 8-unit single project satisfies electives (A-08).
+- F5. `non_ee_course_not_te_fail` → ME3243 as TE fails (`TE_EXCLUDE_NON_EE`); asymmetric alias.
+- F6. `ee3305_te_ay24_pass` vs F5 → EE3305 passes as TE for AY2024 but its non-EE twin does not.
+
+### Layer H — New corrections (closed TC list, SEP→TC, CDE4301, residency, emerging tech)
+- H1. `tc_closed_list_reject_fail` → EE3801 cannot satisfy TC.
+- H2. `cg3207_te_ay24_pass` → CG3207 valid TE for AY2024.
+- H3. `sep_mapped_to_tc_pass` → SEP course mapped to TC accepted (AY23/AY24).
+- H4. `cde4301_spec_idp_conflict_fail` → CDE4301 cannot fulfil a Spec when used for IDP 2nd Major.
+- H5. `sep_residency_below_50_fail` → residency <50% fails.
+- H6. `emerging_tech_not_set_elective_fail` → EE4032 is NOT a SET elective (A-09 ignore entirely).
+- H7. **Level-1000 cap** (`level1000_cap_exceeded_warn`) and internship-combo are now enforced
+  (A-13), not advisory; S/U is out of scope.
 
 ### Layer G — Output-format & reporting contract
 - G1. `--format json` is valid JSON and contains: overall status, per-section status (Major,
@@ -147,6 +167,14 @@ Run `audit --allocation <f>`:
 | Invalid manual allocations | D5 (MP-7) |
 | Config merge conflicts | A4, A5, config_merge_* (MP-12) |
 | Source reference preservation | A6, source_ref_preserved_on_failure (MP-4) |
+| Closed TC pool (A-01) | B6, H1 (MP-18) |
+| Non-EE not TE / asym alias (TE26 Note 2) | B7, F5, F6 (MP-8c) |
+| Intake TE carve-outs (TE26 Note 3) | B8, H2, ee3305_te_ay24_pass (MP-20) |
+| SEP→TC mapping (AY23/24) | H3 |
+| CDE4301 vs IDP 2nd Major (A-16) | H4 |
+| SEP residency 50%/60% | H5 (MP-19) |
+| Emerging Tech ignored (A-09) | H6 |
+| Level-1000 cap + internship enforced (A-13) | H7 |
 
 ---
 
@@ -182,20 +210,26 @@ These run two CLI invocations and compare outputs (see `metamorphic_properties.m
 
 ## 7. Open questions to confirm with maintainer (do not assume)
 
+Curriculum ambiguities are resolved (see `ambiguous_rules.md` resolution table). Remaining
+open items are about the **CLI contract**, not the rules:
+
 1. **Exit-code semantics.** Does `audit` return non-zero when the degree does not pass, or
    always 0 with status in the payload? Tests in §3 assume non-zero on fail; mark `[confirm]`.
-2. **Scope of a single audit.** Do the targeted fixtures (minimal transcripts) produce an
-   overall `pass:false` while the targeted *section* is what we assert? Confirm the JSON
-   exposes per-section status so section-scoped assertions are possible (it should per
-   PRM 588–604).
-3. **Specialisation selection.** Is the audited specialisation chosen automatically from
-   eligibility, declared in the transcript, or passed as a CLI flag? This affects how
-   Spec-focused fixtures are run.
-4. **Warning vs failure for ambiguous rules.** Confirm whether A-09 (Emerging Tech), A-13
-   (level-1000 cap), A-10 (ME3142) are modelled as hard fails or warnings; adjust `[ambiguous]`
-   tests to `xfail` accordingly.
+2. **Scope of a single audit.** Confirm the JSON exposes per-section status so section-scoped
+   assertions are possible on minimal fixtures (it should per PRM 588–604).
+3. **Specialisation selection.** Is the audited specialisation chosen automatically, declared
+   in the transcript, or passed as a CLI flag?
+4. **Cohort parameterisation.** Confirm the AY2024 carve-outs (CG3207/EE3105/EE3305/EE3306/
+   EE3703/EE3801 TE-eligible; AY2025+ UE-only) are driven by a cohort key in config, so MP-20
+   can be tested by swapping configs.
 5. **ID stability.** Confirm the public requirement/constraint IDs so the adapter in §2 is
-   stable across versions.
+   stable across versions (e.g. `TE_EXCLUDE_NON_EE`, `TC_SEP_MAPPABLE`, `CDE4301_NO_SPEC_IF_IDP`,
+   `SEP_RESIDENCY_50`).
+6. **Residency data.** Confirm transcripts carry enough `source` info (NUS vs SEP) for the
+   50%/60% residency computation, and whether residency is a hard fail or a warning.
+
+Items still on a recommended default (not explicitly "solved"): A-02 (count+units), A-04
+(EE3033 term gate), A-10 (ME3142 review), A-15 (MQM host MSE). Keep these as `[default]` tests.
 
 ---
 
@@ -210,6 +244,7 @@ tests_blackbox/
   test_manual_alloc.py     # Layer D
   test_sep_rules.py        # Layer E
   test_alias_topic.py      # Layer F
+  test_corrections.py      # Layer H (closed TC list, SEP->TC, CDE4301, residency, emerging tech)
   test_output_formats.py   # Layer G + snapshots
   test_robustness.py       # Section 5 negatives
   test_metamorphic.py      # Section 6 cross-checks
@@ -217,5 +252,6 @@ tests_blackbox/
 
 Each `edge_cases.yaml` entry becomes a parametrised case; the harness asserts that
 `expected_failed_requirements` / `expected_failed_constraints` are subsets of the emitted
-sets and that each `expected_warnings` substring is present. `[ambiguous]`-tagged cases are
-collected separately so they can be flipped to `xfail` without masking real regressions.
+sets and that each `expected_warnings` substring is present. `[default]`-tagged cases (A-02,
+A-04, A-10, A-15) are collected separately so they can be flipped to `xfail` if the
+implementation documents a different choice, without masking real regressions.

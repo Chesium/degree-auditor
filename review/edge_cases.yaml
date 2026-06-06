@@ -662,7 +662,10 @@ cases:
     why_this_matters: >
       EE3305 and ME3243 are the same course (Robotic System Design). The auditor
       must treat ME3243 as satisfying the EE3305 basket slot via alias resolution.
-    assert_focus: ALIAS_EE3305_ME3243
+      NOTE: ME3243 (non-EE) is valid for Specialisation/UE but is NOT TE-eligible
+      (TE_EXCLUDE_NON_EE) — see non_ee_course_not_te_fail. Alias resolution grants
+      Specialisation eligibility only, not TE eligibility.
+    assert_focus: ALIAS_EE3305_ME3243 (spec eligibility only)
     transcript:
       courses:
         - {course_code: ME3243, units: 4, status: completed, source: NUS}
@@ -987,13 +990,14 @@ cases:
     source_refs:
       - {document: CHK, page: 3, quote: "Students should not read more than 60 units of level 1000 courses"}
 
-  - id: emerging_tech_set_elective_needs_review
+  - id: emerging_tech_not_set_elective_fail
     description: >
-      Student relies on EE4032 (Blockchain) as a SET elective to reach the 2-elective minimum.
+      Student tries to count EE4032 (Blockchain) as a SET elective to reach the 2-elective minimum.
     why_this_matters: >
-      EE4032/EE4205 placement under SET is ambiguous (A-09); using them must not
-      silently pass but should flag for human review.
-    assert_focus: A-09 conservative behaviour
+      A-09 RESOLVED (ignore "Emerging Technologies" entirely). EE4032 is GEN-area and EE4205
+      is CN-area with NO specialisation tag in the master list; neither is a SET (or MQM)
+      elective. Counting EE4032 toward SET must simply FAIL — not a 'needs_human_review' warning.
+    assert_focus: A-09 (EE4032/EE4205 are not SET/MQM electives)
     transcript:
       courses:
         - {course_code: EE4502, units: 4, status: completed, source: NUS}
@@ -1006,11 +1010,180 @@ cases:
         - {course_code: EE4032, requirement_id: SET_ELECTIVE, units: 4, allocation_role: primary, manual: true}
     expected_pass: false
     expected_failed_requirements: [SET_ELECTIVES_MIN_2]
+    expected_failed_constraints: [MANUAL_ALLOC_INELIGIBLE]
+    expected_warnings:
+      - "EE4032 is not a SET elective (GEN-area; Emerging Technologies block is not modelled)"
+    source_refs:
+      - {document: TE26, page: 4, quote: "EE4032 Blockchain Engineering ... GEN ... 2ndMaj/Minor Computing (D&E)-Elect"}
+      - {document: review, page: null, quote: "ambiguous_human_review.md A-09: Ignore the Emerging Technologies at all"}
+
+  - id: non_ee_course_not_te_fail
+    description: ME3243 (non-EE, cross-listed with EE3305) manually allocated as a TE.
+    why_this_matters: >
+      NEW rule TE_EXCLUDE_NON_EE: non-EE courses (MExxxx, CSxxxxDE, RBxxxx) count toward UE
+      only and can NEVER fulfil the EE TE rule, even when cross-listed with an EE course.
+    assert_focus: TE_EXCLUDE_NON_EE
+    transcript:
+      courses:
+        - {course_code: ME3243, units: 4, status: completed, source: NUS}
+        - {course_code: EE4302, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: ME3243, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4302, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: [TE_MIN_2]
+    expected_failed_constraints: [TE_EXCLUDE_NON_EE]
+    expected_warnings:
+      - "ME3243 is a non-EE course; it counts toward UE only, not the EE TE rule"
+    source_refs:
+      - {document: TE26, page: 4, quote: "Non-EE courses (MExxxx, CSxxxxDE, RBxxxx) count towards UE requirements only. They cannot be used to fulfil EE Tech elective rules."}
+
+  - id: cg3207_te_ay24_pass
+    description: CG3207 used as one of two TEs for an AY2024-intake student.
+    why_this_matters: >
+      NEW carve-out TE_AY24_CG3207_OK: for AY2024 intake & prior, CG3207 IS TE-eligible. The
+      UE-only restriction on CG3207 applies only to AY2025 intake & after. A blanket "CG3207
+      is UE-only" implementation would wrongly fail this cohort.
+    assert_focus: TE_AY24_CG3207_OK
+    transcript:
+      courses:
+        - {course_code: CG3207, units: 4, status: completed, source: NUS}
+        - {course_code: EE4302, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: CG3207, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4302, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings: []
+    source_refs:
+      - {document: TE26, page: 4, quote: "AY2024 intake & prior: CG3207 can be used to fulfil EE Tech Elective rule."}
+
+  - id: ee3305_te_ay24_pass
+    description: EE3305 used as a TE for an AY2024-intake student.
+    why_this_matters: >
+      TE_AY24_EE3xxx_OK: EE3105/EE3305/EE3306/EE3703/EE3801 are valid TEs for AY2024 intake
+      (they appear in the AY2021-AY2024 TE table). The UE-only restriction is AY2025+ only.
+      Note: the non-EE twin ME3243 would NOT be TE-eligible (see non_ee_course_not_te_fail).
+    assert_focus: TE_AY24_EE3xxx_OK
+    transcript:
+      courses:
+        - {course_code: EE3305, units: 4, status: completed, source: NUS}
+        - {course_code: EE4308, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3305, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE4308, requirement_id: EE24JC_TE, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings: []
+    source_refs:
+      - {document: GRB, page: 9, quote: "EE Technical Electives : AY2021-AY2024 intake ... EE3305 EE3306 ..."}
+
+  - id: tc_closed_list_reject_fail
+    description: >
+      EE3801 (an EE3xxx that is NOT one of the six extended cores) manually allocated as a TC.
+    why_this_matters: >
+      A-01 RESOLVED to a CLOSED TC list. An "any EE3xxxC/EE3xxx counts as TC" implementation
+      would wrongly accept EE3801. Only {unused EE2026/EE2028, EE3033, EE3131C, EE3408C,
+      EE3331C, EE3431C, EE3731C, EE3104C} are TC-eligible.
+    assert_focus: TC_POOL (closed list)
+    transcript:
+      courses:
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3331C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3801, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3408C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3331C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3801, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: [TC_MIN_3]
+    expected_failed_constraints: [MANUAL_ALLOC_INELIGIBLE]
+    expected_warnings:
+      - "EE3801 is not in the closed TC list; cannot satisfy the TC requirement"
+    source_refs:
+      - {document: TCL, page: 1, quote: "List of Additional Technical Courses ... EE3131C, EE3408C, EE3331C, EE3431C, EE3731C, EE3104C"}
+      - {document: FAQ, page: 2, quote: "for the remaining 2 TCs, you may choose 2 from the list (EE3033, EE3131C, EE3408C, EE3331C, EE3431C, EE3731C, EE3104C)"}
+
+  - id: sep_mapped_to_tc_pass
+    description: An AY2024-intake student maps a SEP course to the TC requirement.
+    why_this_matters: >
+      NEW rule TC_SEP_MAPPABLE / SEP_MAY_MAP_TC: AY23/AY24 intakes may map SEP courses to TC
+      (due to the inflight curriculum change). An implementation that only allows SEP→TE/spec
+      would wrongly reject this.
+    assert_focus: TC_SEP_MAPPABLE
+    transcript:
+      courses:
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3331C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3431C, units: 4, status: completed, source: SEP, mapped_to: EE3431C, approved_for: [EE_TC]}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3408C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3331C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3431C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
     expected_failed_constraints: []
     expected_warnings:
-      - "EE4032 placement under SET is unconfirmed (Emerging Technologies); needs_human_review"
+      - "SEP course EE3431C mapped to TC (allowed for AY23/AY24 intakes)"
     source_refs:
-      - {document: SPC, page: 10, quote: "Emerging Technologies EE4032 Blockchain Engineering EE4205 Quantum Communication and Cryptography"}
+      - {document: SEP, page: 2, quote: "AY23 and AY24 intake students may take SEP courses to map to Technical Course (TC) requirements"}
+
+  - id: cde4301_spec_idp_conflict_fail
+    description: >
+      iDP student uses CDE4301 for the IDP Second Major AND also allocates it to an EE
+      Specialisation (e.g. SPT).
+    why_this_matters: >
+      A-16 RESOLVED: CDE4301/CDE4301A cannot fulfil a Specialisation if also used for the
+      IDP Second Major. Distinct from the EE4002D/R capstone lock.
+    assert_focus: CDE4301_NO_SPEC_IF_IDP
+    transcript:
+      student_flags: [IDP]
+      courses:
+        - {course_code: EE3105, units: 4, status: completed, source: NUS}
+        - {course_code: EE3131C, units: 4, status: completed, source: NUS}
+        - {course_code: CDE4301, units: 12, status: completed, source: NUS, topic_tags: [satellite]}
+    manual_allocation:
+      allocations:
+        - {course_code: CDE4301, requirement_id: IDP_2ND_MAJOR, units: 12, allocation_role: primary, manual: true}
+        - {course_code: CDE4301, requirement_id: SPT_CORE, units: 12, allocation_role: double_count, manual: true}
+    expected_pass: false
+    expected_failed_requirements: []
+    expected_failed_constraints: [CDE4301_NO_SPEC_IF_IDP]
+    expected_warnings:
+      - "CDE4301 used for IDP Second Major cannot also fulfil the SPT Specialisation"
+    source_refs:
+      - {document: review, page: null, quote: "ambiguous_human_review.md A-16: CDE4301/CDE4301A cannot be used to fulfil a specialisation ... if also used to fulfil the Second Major in Innovation & Design"}
+
+  - id: sep_residency_below_50_fail
+    description: >
+      A transcript where more than half of all course units are SEP-mapped (residency < 50%).
+    why_this_matters: >
+      NEW rule SEP_RESIDENCY_50: at least 50% of overall courses must be read at NUS. Mass
+      SEP mapping that satisfies requirements on paper must still fail residency.
+    assert_focus: SEP_RESIDENCY_50
+    transcript:
+      courses:
+        - {course_code: EE2012, units: 4, status: completed, source: SEP, mapped_to: EE2012}
+        - {course_code: EE2022, units: 4, status: completed, source: SEP, mapped_to: EE2022}
+        - {course_code: EE2023, units: 4, status: completed, source: SEP, mapped_to: EE2023}
+        - {course_code: EE2027, units: 4, status: completed, source: SEP, mapped_to: EE2027}
+        - {course_code: EE1111A, units: 4, status: completed, source: NUS}
+        - {course_code: EE2111A, units: 4, status: completed, source: NUS}
+        - {course_code: PC2020, units: 4, status: completed, source: NUS}
+    expected_pass: false
+    expected_failed_requirements: []
+    expected_failed_constraints: [SEP_RESIDENCY_50]
+    expected_warnings:
+      - "NUS residency below 50% of overall courses"
+    source_refs:
+      - {document: SEP, page: 2, quote: "Residency requirements: Minimum 50% of overall courses must be read in NUS"}
 
   - id: order_independence_check
     description: >
@@ -1037,4 +1210,196 @@ cases:
     expected_warnings: []
     source_refs:
       - {document: PRM, line: 514, quote: "Use a deterministic, simple allocation priority"}
+
+  - id: cc_cde2501_to_gess_no_gess_pass
+    description: >
+      No GESS course taken; CDE2501 satisfies the Singapore Studies (GE GESS) pillar, and
+      a TC (EE3331C) satisfies the Sustainable Futures pillar in lieu.
+    why_this_matters: >
+      Core of the inflight substitution: when no GESS is taken, CDE2501 is redirected to SS
+      and a TC fills Sustainable Futures. Verifies CC_CDE2501_DUAL_ROLE branch (a) and
+      CC_TC_IN_LIEU_SF.
+    assert_focus: CC_CDE2501_DUAL_ROLE (a) + CC_TC_IN_LIEU_SF
+    transcript:
+      courses:
+        - {course_code: CDE2501, units: 4, status: completed, source: NUS}
+        - {course_code: EE3331C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3431C, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: CDE2501, requirement_id: CC_GE_GESS, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3331C, requirement_id: CC_ISK_SF, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3331C, requirement_id: EE24JC_TC, units: 4, allocation_role: double_count, manual: true}
+        - {course_code: EE3408C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3431C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "CDE2501 counted under Singapore Studies (no GESS taken); TC fills Sustainable Futures"
+    source_refs:
+      - {document: FAQ, page: 2, quote: "you can count CDE2501 towards Singapore Studies and read an additional TC in lieu of the Sustainable Futures pillar"}
+      - {document: GRB, page: 10, quote: "If you have not taken a GESS course, CDE2501 will be count towards the Singapore Studies (SS) pillar. You may read 1 TC in lieu of Sustainable Futures"}
+
+  - id: cc_cde2501_to_sf_with_gess_pass
+    description: >
+      A GESS course is taken (fills Singapore Studies); CDE2501 fills Sustainable Futures;
+      the third TC therefore must be read using UE (not the SF pillar).
+    why_this_matters: >
+      The other CDE2501 branch: when GESS is taken, SF is occupied by CDE2501 so no TC may go
+      to SF; the third TC overflows to UE. Verifies CC_CDE2501_DUAL_ROLE branch (b) and
+      CC_TC_OVERFLOW_TO_UE.
+    assert_focus: CC_CDE2501_DUAL_ROLE (b) + CC_TC_OVERFLOW_TO_UE
+    transcript:
+      courses:
+        - {course_code: GESS1001, units: 4, status: completed, source: NUS}
+        - {course_code: CDE2501, units: 4, status: completed, source: NUS}
+        - {course_code: EE3331C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3431C, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: GESS1001, requirement_id: CC_GE_GESS, units: 4, allocation_role: primary, manual: true}
+        - {course_code: CDE2501, requirement_id: CC_ISK_SF, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3331C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3408C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3431C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3431C, requirement_id: EE24JC_UE, units: 4, allocation_role: residual_ue, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "GESS taken; CDE2501 counted under Sustainable Futures; third TC read using UE"
+    source_refs:
+      - {document: FAQ, page: 2, quote: "the General Education (GESS) course will fulfil the Singapore Studies Pillar, while CDE2501 will be counted under the Sustainable Futures Pillar"}
+      - {document: GRB, page: 10, quote: "you cannot use SF pillar for TC, you will read 1 TC using UE space"}
+
+  - id: cc_double_count_cde2501_fail
+    description: CDE2501 allocated to BOTH the Singapore Studies and Sustainable Futures pillars.
+    why_this_matters: >
+      CDE2501 may occupy only one pillar. Counting it under both SS and SF would fabricate
+      4 units. Verifies CC_CDE2501_DUAL_ROLE single-instance constraint.
+    assert_focus: CC_CDE2501_DUAL_ROLE (no double-count)
+    transcript:
+      courses:
+        - {course_code: CDE2501, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: CDE2501, requirement_id: CC_GE_GESS, units: 4, allocation_role: primary, manual: true}
+        - {course_code: CDE2501, requirement_id: CC_ISK_SF, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: []
+    expected_failed_constraints: [DOUBLE_USE_SINGLE_INSTANCE]
+    expected_warnings:
+      - "CDE2501 cannot satisfy both Singapore Studies and Sustainable Futures pillars"
+    source_refs:
+      - {document: FAQ, page: 2, quote: "CDE2501 remains a compulsory course ... counted under the Sustainable Futures Pillar"}
+
+  - id: cc_tc_in_lieu_ie2141_pass
+    description: >
+      IE2141 not taken; a TC (EE3131C) fills the Systems Thinking pillar and also counts to
+      the TC requirement.
+    why_this_matters: >
+      Verifies CC_TC_IN_LIEU_ST: a TC may replace IE2141 in the Systems Thinking pillar, and
+      that course simultaneously contributes to the TC requirement (intended double-use across
+      CC pillar + TC, not TC<->TE).
+    assert_focus: CC_TC_IN_LIEU_ST
+    transcript:
+      courses:
+        - {course_code: EE3131C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3331C, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3131C, requirement_id: CC_ISK_ST, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3131C, requirement_id: EE24JC_TC, units: 4, allocation_role: double_count, manual: true}
+        - {course_code: EE3408C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3331C, requirement_id: EE24JC_TC, units: 4, allocation_role: primary, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "Systems Thinking pillar satisfied by TC in lieu of IE2141"
+    source_refs:
+      - {document: FAQ, page: 1, quote: "you may take (*EE2026 or *EE2028), EE3033 and 1 extended core EE3xxxC courses in lieu of the Systems Thinking pillar"}
+      - {document: GRB, page: 4, quote: "you can read an additional technical course to satisfy the Systems Thinking pillar in lieu of IE2141"}
+
+  - id: cc_ie2141_and_tc_both_in_st_fail
+    description: IE2141 taken AND a TC also claimed for the Systems Thinking pillar.
+    why_this_matters: >
+      The substitution is mutually exclusive: if IE2141 is taken it already fills Systems
+      Thinking, so a TC cannot also occupy that pillar (over-allocation). Verifies the XOR in
+      CC_TC_IN_LIEU_ST.
+    assert_focus: CC_TC_IN_LIEU_ST (IE2141 XOR TC-in-ST)
+    transcript:
+      courses:
+        - {course_code: IE2141, units: 4, status: completed, source: NUS}
+        - {course_code: EE3131C, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: IE2141, requirement_id: CC_ISK_ST, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3131C, requirement_id: CC_ISK_ST, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: []
+    expected_failed_constraints: [PILLAR_OVER_ALLOCATED]
+    expected_warnings:
+      - "Systems Thinking pillar already satisfied by IE2141; TC cannot also fill it"
+    source_refs:
+      - {document: GRB, page: 4, quote: "If you have not already read IE2141 ... you can read an additional technical course ... in lieu of IE2141"}
+
+  - id: cc_rc4_substitution_not_applicable_warn
+    description: Student flagged RC4 attempts the standard TC-in-lieu substitution table.
+    why_this_matters: >
+      The substitution table explicitly does not apply to RC4/UTCP/NUSC/RVRC/poly students;
+      such cases need human review against the college-specific mapping. Verifies CC_RC_EXCLUSION.
+    assert_focus: CC_RC_EXCLUSION
+    transcript:
+      student_flags: [RC4]
+      courses:
+        - {course_code: EE3131C, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: EE3131C, requirement_id: CC_ISK_ST, units: 4, allocation_role: primary, manual: true}
+    expected_pass: false
+    expected_failed_requirements: []
+    expected_failed_constraints: [CC_RC_EXCLUSION]
+    expected_warnings:
+      - "Standard TC-in-lieu substitution does not apply to RC4/UTCP/NUSC/RVRC/poly students; needs_human_review"
+    source_refs:
+      - {document: FAQ, page: 1, quote: "The below table is not applicable to students in RC4/UTCP/NUSC/RVRC/Poly graduates"}
+      - {document: GRB, page: 17, quote: "Students in RC4/UTCP/NUSC/RVRC may refer to their respective colleges for mappings"}
+
+  - id: cc_tc_count_not_inflated
+    description: >
+      Three TCs read inside vacated CC pillars (ST/CN/SF) — total graduation units must remain
+      160, not 160+12.
+    why_this_matters: >
+      The 3 TCs reallocate CC pillar / UE space; they do NOT add units on top of 160. An
+      implementation that adds a separate 12-unit TC block would overcount. Verifies
+      CC_TC_OVERFLOW_TO_UE / unit-neutrality (see metamorphic MP-21).
+    assert_focus: CC_TC_OVERFLOW_TO_UE (unit-neutral substitution)
+    transcript:
+      courses:
+        - {course_code: CDE2501, units: 4, status: completed, source: NUS}
+        - {course_code: EE3131C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3408C, units: 4, status: completed, source: NUS}
+        - {course_code: EE3331C, units: 4, status: completed, source: NUS}
+    manual_allocation:
+      allocations:
+        - {course_code: CDE2501, requirement_id: CC_GE_GESS, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3131C, requirement_id: CC_ISK_ST, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3131C, requirement_id: EE24JC_TC, units: 4, allocation_role: double_count, manual: true}
+        - {course_code: EE3408C, requirement_id: CC_ISK_CN, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3408C, requirement_id: EE24JC_TC, units: 4, allocation_role: double_count, manual: true}
+        - {course_code: EE3331C, requirement_id: CC_ISK_SF, units: 4, allocation_role: primary, manual: true}
+        - {course_code: EE3331C, requirement_id: EE24JC_TC, units: 4, allocation_role: double_count, manual: true}
+    expected_pass: true
+    expected_failed_requirements: []
+    expected_failed_constraints: []
+    expected_warnings:
+      - "3 TCs absorbed by ST/CN/SF pillars; degree total remains 160 units (not inflated)"
+    source_refs:
+      - {document: CTK, page: 7, quote: "You may utilize the following space in the CDE Common Curriculum to read the 3 additional TC"}
+      - {document: FAQ, page: 2, quote: "you will need to use your unrestricted elective space to read additional 3 technical courses"}
 

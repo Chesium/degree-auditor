@@ -2,7 +2,50 @@
 
 Each entry lists ≥2 plausible interpretations, the implementation consequence of each, and a **recommended conservative default** for the prototype. "Conservative" here means: do not silently let a student pass; prefer warnings / explicit human-review flags over silent assumptions (PRM 91, 809).
 
-Source shorthand: **CHK** = checklist PDF, **SPC** = specialisations PDF, **PRM** = prompt.txt.
+Source shorthand:
+- **CHK** = `L_AY24JC_Checklist_Revised_3TC_4June2025.pdf`
+- **SPC** = `ECE_Specialisations_AY2025_7July2025.pdf`
+- **PRM** = `prompt.txt`
+- **TCL** = `Electrical-Engineering-List-of-Additional-Technical-Courses-v3.pdf` (closed TC list)
+- **FAQ** = `FAQ for In-Flight students_For AY24 Non Poly_17Jun2025.pdf`
+- **GRB** = `EE2_Revised Grad Req Briefing_20June25.pdf`
+- **CTK** = `EE2_Curriculum_Talk_2025_13Aug2025.pdf`
+- **TE25/TE26** = `EE_TechElectives_AY2026_iii.pdf` (AY2026/27 master list; course attributes + intake carve-outs)
+- **SEP** = `ECE_SEP_Outgoing_AY2627_30Jan26.pdf`
+
+---
+
+## Resolution status (updated after human review + new resources)
+
+All 17 items were addressed in `ambiguous_human_review.md`. Status legend:
+**RESOLVED** = decision final + evidence; **DEFAULT-ADOPTED** = recommended default accepted but
+not explicitly marked "solved" (keep a light watch).
+
+| id | status | decision |
+|----|--------|----------|
+| A-01 | RESOLVED | Interpretation 1 — **closed TC list** (not "any EE3xxxC"). Evidence: TCL, FAQ Q3. |
+| A-02 | DEFAULT-ADOPTED | Evaluate both count and units; require both. |
+| A-03 | RESOLVED | Single 2-TE requirement located in the Major Programme. |
+| A-04 | DEFAULT-ADOPTED | Gate EE3033 TC-eligibility on term ≥ AY2025/26 S2; warn if term unknown. |
+| A-05 | RESOLVED | Full 8u budget consumed; no further double-count. Evidence: Robotics page + GRB p.18. |
+| A-06 | RESOLVED | Capstone-for-spec ⇒ zero SEP for that spec. Evidence: SPC p.1. |
+| A-07 | RESOLVED | Enforce overlap ≤ 8 AND distinct ≥ 12 independently. |
+| A-08 | RESOLVED | Require both (≥N courses AND ≥units) so the 20-unit total holds. |
+| A-09 | RESOLVED | Interpretation 2 — **ignore "Emerging Technologies" (EE4032/EE4205) entirely**; not SET/MQM electives. Evidence: TE26 (EE4032=GEN, EE4205=CN, no spec tag). |
+| A-10 | DEFAULT-ADOPTED | EE3331C canonical for IND4 core; ME3142 only with review (and non-EE ⇒ TE-ineligible). |
+| A-11 | RESOLVED | Auto-evaluate both Robotics paths; report satisfied one. |
+| A-12 | RESOLVED | UE residual is "free"; never the overlap-creating requirement. |
+| A-13 | RESOLVED | **Enforce** the 60-unit level-1000 cap and internship-combination check; **ignore S/U** for now. |
+| A-14 | RESOLVED | Cap SEP→Major-TE at 1; extra SEP TEs allowed only as UE; ≥1 NUS TE required. |
+| A-15 | DEFAULT-ADOPTED | MQM follows 20/8/12; EE2027 overlap = 4u; tag host MSE. |
+| A-16 | RESOLVED | CDE4301/CDE4301A cannot fulfil a Specialisation if also used for the IDP 2nd Major. Evidence: CDE iDP 2nd-major page. |
+
+New rules/corrections surfaced by the resources (now folded into `rule_inventory.md`): closed TC
+list; 3 TC = 12 units; SEP courses may map to TC for AY23/AY24 intakes; **non-EE courses
+(MExxxx/CSxxxxDE/RBxxxx) cannot fulfil the EE TE rule** (UE only); for AY2024 intake CG3207,
+EE3105, EE3305, EE3306, EE3703, EE3801 **are** valid TEs (the UE-only carve-out is AY2025
+intake & after); SEP residency (≥50% overall) and programme (≥60%) minimums; several course
+title updates. See `rule_inventory.md` §3, §4, §5, §9, §14.
 
 ---
 
@@ -15,6 +58,14 @@ Source shorthand: **CHK** = checklist PDF, **SPC** = specialisations PDF, **PRM*
 - **Interpretation 3 (full TC column = TC pool):** The whole `EE3xxxC/EE3xxx/EE4xxx` block applies to TC too, making TC and TE pools nearly identical and distinguished only by allocation.
 
 **Recommended default:** Interpretation 2 — TC pool = enumerated extended-core list ∪ {unused EE2026/EE2028} ∪ {EE3033 after date} ∪ {any EE3xxxC}. Mark EE3xxx/EE4xxx-as-TC as `needs_human_review`. Emit a warning when a TC is satisfied by a course outside the enumerated list.
+
+> **RESOLVED → Interpretation 1 (closed list).** The dedicated `List of Additional Technical
+> Courses` (TCL) enumerates exactly: (EE2026 or EE2028, when not used for Major), EE3033, and
+> the six extended cores EE3131C, EE3408C, EE3331C, EE3431C, EE3731C, EE3104C. FAQ Q3 confirms
+> "for the remaining 2 TCs, you may choose 2 from the list (EE3033, EE3131C, EE3408C, EE3331C,
+> EE3431C, EE3731C, EE3104C)." There is **no** open "any EE3xxxC" rule — the only EE3xxxC
+> courses that exist as extended cores are those six. The TC pool is a closed set; a course
+> outside it must NOT satisfy TC. (3 TC = 12 units, FAQ.)
 
 ---
 
@@ -70,6 +121,11 @@ Source shorthand: **CHK** = checklist PDF, **SPC** = specialisations PDF, **PRM*
 
 **Recommended default:** Interpretation 1 — capstone double-count → overlap budget = 8/8 used, hard-block any further double-count for that Specialisation, regardless of role.
 
+> **RESOLVED → Interpretation 1.** Confirmed by the ECE Robotics specialisation page (quoted in
+> `ambiguous_human_review.md`): "if a student double counts Capstone project, e.g., EE4002D/R
+> (8 units), to fulfil one Specialisation and Common Curriculum, then he/she cannot double count
+> any technical elective for that Specialisation and another programme." Also GRB p.18.
+
 ---
 
 ## A-06. SPT capstone "compulsory" vs the overlap lock — is SPT ever passable with SEP or extra overlap?
@@ -122,6 +178,12 @@ Source shorthand: **CHK** = checklist PDF, **SPC** = specialisations PDF, **PRM*
 
 **Recommended default:** Do **not** auto-attach them to any Specialisation. Model them in a separate `emerging_tech` pool flagged `needs_human_review`, and do not count them toward SET/MQM completion unless confirmed. Emit a warning if a transcript relies on them.
 
+> **RESOLVED → Interpretation 2 (ignore entirely).** Human review: "Ignore the 'Emerging
+> Technologies' at all." The AY2026/27 master list (TE26) corroborates this: EE4032 is tagged
+> area **GEN** with no specialisation tag, and EE4205 is tagged **CN** with no specialisation
+> tag — neither is a SET or MQM elective. Do not model an `emerging_tech` pool; these courses
+> are ordinary EE4xxx TEs/UE and must not count toward any Specialisation's electives.
+
 ---
 
 ## A-10. ME3142 / "for ME students" alias for EE3331C in Industry 4.0
@@ -134,6 +196,14 @@ Source shorthand: **CHK** = checklist PDF, **SPC** = specialisations PDF, **PRM*
 **Consequence.** For an EE-only auditor, Interpretation 1 means ME3142 should not satisfy IND4 core. Interpretation 2 risks crediting a course an EE student typically cannot take.
 
 **Recommended default:** Treat EE3331C as the canonical IND4 core; accept ME3142 only with a `needs_human_review` warning ("ME-only alias"). Note this differs from EE3305/ME3243 and EE3306/ME3163, which are presented as plain equivalences (no "for ME students" caveat).
+
+> **DEFAULT-ADOPTED + reinforced by TE26 Note 2.** The AY2026/27 master list states: "Non-EE
+> courses (MExxxx, CSxxxxDE, RBxxxx) count towards UE requirements only. They cannot be used to
+> fulfil EE Tech elective rules." Consequence: ME3142/ME3243/ME3163/ME4245/RB4301 and the CS
+> specialisation courses may satisfy **Specialisation electives / UE**, but they can **never**
+> satisfy the EE TE rule. When a student presents the ME-coded twin (e.g. ME3243) it resolves to
+> the EE course for *Specialisation* eligibility only; it does not become TE-eligible. This is
+> now captured as `TE_EXCLUDE_NON_EE` in `rule_inventory.md` §4.
 
 ---
 
@@ -174,6 +244,11 @@ Source shorthand: **CHK** = checklist PDF, **SPC** = specialisations PDF, **PRM*
 
 **Recommended default:** Model `LVL1000_MAX_60` as a warning-level constraint (not hard-fail for the prototype) and model the internship combos as an `MAJOR_INTERNSHIP_COMBO` requirement. Flag both as lower-priority / `needs_human_review`.
 
+> **RESOLVED → enforce both, ignore S/U.** Human review: "enforce the 60-unit level-1000 cap and
+> internship combination check. ignore S/U for now." Promote `LVL1000_MAX_60` and
+> `MAJOR_INTERNSHIP_COMBO` to enforced constraints (no longer `needs_human_review`). The S/U
+> option is explicitly out of scope for the prototype.
+
 ---
 
 ## A-14. "Up to one SEP-mapped TE for Major" vs unlimited SEP TEs to UE
@@ -212,6 +287,12 @@ Source shorthand: **CHK** = checklist PDF, **SPC** = specialisations PDF, **PRM*
 **Consequence.** Ambiguity about whether CDE4301 can ever double-count to a Specialisation.
 
 **Recommended default:** Restrict the capstone lock to EE4002D/EE4002R (8u). Treat CDE4301 as IDP-gated and never auto-double-count it to a Specialisation; flag if attempted.
+
+> **RESOLVED.** Per the CDE iDP 2nd-Major page (quoted in `ambiguous_human_review.md`):
+> "CDE4301/CDE4301A cannot be used to fulfil a specialisation in any Engineering major if it
+> [is] also used to fulfil the Second Major in Innovation & Design." Model a hard constraint
+> `CDE4301_NO_SPEC_IF_IDP`: if CDE4301/CDE4301A is allocated to the IDP 2nd Major, it cannot
+> also be allocated to any Specialisation. The capstone *lock* remains restricted to EE4002D/R.
 
 ---
 

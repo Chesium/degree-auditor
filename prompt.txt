@@ -26,15 +26,17 @@ Use the PDF files in `resources` folder as the primary source of truth:
    * Important rules:
 
      * Total degree requirement is 160 units.
-     * Common Curriculum CDE is 60 units.
+     * Common Curriculum CDE is 60 units. (For the in-flight AY2024 cohort the structure stays CC 60 / UE 40 / Major 60 = 160; the 60->40 CC revision with capstone moved into major space applies to the fresh AY2025/26 intake, NOT this cohort. Confirmed by EE2_Curriculum_Talk_2025 slide 7.)
      * UE is 40 units.
      * Major Requirements are 60 units.
-     * AY24 JC/non-poly intake must read 3 Technical Courses (TC).
+     * AY24 JC/non-poly intake must read 3 Technical Courses (TC) = 12 units.
      * Technical Course (TC) is not Technical Elective (TE).
      * The 3 TCs are in addition to the EE TE rule of 2 TEs.
      * Courses used to fulfil TC cannot be used to fulfil TE, and vice versa.
-     * TC pool includes EE2026 or EE2028, whichever is not used to fulfil EE Major; EE3033 from Sem 2 AY25/26; and extended core courses EE3131C, EE3408C, EE3331C, EE3431C, EE3731C, EE3104C.
+     * TC pool is a CLOSED list: EE2026 or EE2028 (whichever is not used to fulfil EE Major); EE3033 (Systems Integration and Design Lab; TC-eligible from Sem 2 AY25/26, then Sem 1 & 2 from AY26/27; prereq EE2023+EE2026+EE2027; NOT an extended core, NOT a TE); and the six extended core courses EE3131C, EE3408C, EE3331C, EE3431C, EE3731C, EE3104C. There is NO open "any EE3xxxC" rule -- those six are the only extended cores. A course outside this closed set must not satisfy TC.
      * TE pool includes EE4xxx, EE3xxxC, and EE3xxx, but excludes EE3033; EE3031 can only fulfil UE for AY2021-AY2024 intake, not TE.
+     * Non-EE courses (MExxxx, CSxxxxDE, RBxxxx) cannot fulfil the EE TE rule; they count toward UE only (they may still satisfy Specialisation electives).
+     * For the AY2024 intake, CG3207, EE3105, EE3305, EE3306, EE3703, EE3801 ARE valid TEs. The "UE only, not TE" restriction on these courses applies to the AY2025 intake and after.
 
 2. `ECE_Specialisations_AY2025_7July2025.pdf`
 
@@ -47,9 +49,24 @@ Use the PDF files in `resources` folder as the primary source of truth:
      * At least 12 units of each specialisation must be distinct and non-overlapping.
      * If EE4002D/R capstone is double-counted between Common Curriculum and a Specialisation, then no further technical elective can be double-counted for that same Specialisation.
      * This capstone rule applies to Space Technology, and to Robotics / IoT / MQM when their related capstone is used to fulfil the respective specialisation.
+     * CDE4301/CDE4301A cannot be used to fulfil a Specialisation in any Engineering major if it is also used to fulfil the IDP Second Major.
+     * The "Emerging Technologies" courses EE4032 and EE4205 are NOT SET or MQM specialisation electives; do not model them as specialisation electives (EE4032 is GEN-area, EE4205 is CN-area).
      * SEP rule for EE TE: at least one TE, either EE3xxxC or EE4xxx, must be completed at NUS. At most one SEP-mapped EE3xxxC/EE4xxx may be used to fulfil the Major TE requirement.
      * SEP rule for Specialisations: at most 8 units of unique SEP courses may be mapped per Specialisation. A SEP course approved for one Specialisation should not be mapped again to another Specialisation or Minor.
      * If capstone is used to fulfil SPT, IoT, Rbt, or MQM, no SEP courses may be mapped to that respective Specialisation.
+     * SEP residency: at least 50% of overall courses must be read at NUS, and at least 60% of programme course requirements must be read at NUS.
+     * AY23/AY24 intake students may map SEP courses to the TC requirement (due to the inflight curriculum change).
+
+3. Additional authoritative resources (added later; treat with same authority as above):
+
+   * `Electrical-Engineering-List-of-Additional-Technical-Courses-v3.pdf` -- the closed TC list.
+   * `FAQ for In-Flight students_For AY24 Non Poly_17Jun2025.pdf` -- TC = 12 units, closed list, where to read TCs.
+   * `EE2_Revised Grad Req Briefing_20June25.pdf` -- authoritative AY2021-AY2024 TE list (per area); CC revision context.
+   * `EE2_Curriculum_Talk_2025_13Aug2025.pdf` -- confirms AY2024 intake structure 60/40/60 + 3 TC.
+   * `EE_TechElectives_AY2026_iii.pdf` -- master TE list: course titles/attributes, cross-listings, non-EE-not-TE rule, intake carve-outs.
+   * `ECE_SEP_Outgoing_AY2627_30Jan26.pdf` -- SEP residency limits, SEP->TC mapping, per-spec 8-unit SEP cap.
+
+   Course title corrections from the master list: EE3731C = "Signal Analytics"; EE4409 = "Microelectronic Applications for Modern Life"; EE4315 = "Industrial Control Systems with AI" (former EE4303); EE4305 = "Fuzzy/Neural Systems for intelligent robotics"; EE4205 = "Quantum Computing and Communication"; EE4438 = "Solar Cells and Modules".
 
 Optional reference links:
 
@@ -285,6 +302,44 @@ ignored
 
 ## Core rules to implement
 
+### CDE Common Curriculum (60 units)
+
+Model the Common Curriculum as individual pillars, not just two unit buckets.
+
+General Education (24 units, six pillars, 4 units each). GESSxxxx/GECxxxx/GENxxxx are course
+families -- match by prefix, not exact code:
+
+* Singapore Studies: GESSxxxx
+* Cultures & Connections: GECxxxx
+* Communities & Engagement: GENxxxx (advisory: complete by Year 3)
+* Critique & Expression: ES2631
+* Digital Literacy: CS1010E
+* Data Literacy: GEA1000 (former GER1000; treat as alias)
+
+Interdisciplinary Skills / Core Skills & Knowledge (36 units, seven pillars + Integrated Project):
+
+* Design Thinking: DTK1234
+* Maker Space: EG1311 / EG1311BE
+* Systems Thinking: IE2141 (or a TC in lieu -- see below)
+* Artificial Intelligence: EE2211
+* Sustainable Futures: CDE2501 (or a TC in lieu -- conditional)
+* Creating Narratives: CDE2000 (or a TC in lieu)
+* Project Management: PF1101
+* Integrated Project: EE4002D/EE4002R (8 units) or CDE4301 (12 units, IDP)
+
+Inflight TC substitution (AY2024 cohort). The 3 additional Technical Courses (TC, not TE) are
+absorbed by vacated CC pillars or by UE; they do NOT add units beyond 160. Decision matrix
+(GRB p.12 Options 1-4 / FAQ scenarios 1-16):
+
+* If IE2141 not taken: a TC may satisfy Systems Thinking in lieu of IE2141 (IE2141 XOR TC-in-ST).
+* If CDE2000 not taken: a TC may satisfy Creating Narratives in lieu of CDE2000 (CDE2000 XOR TC-in-CN).
+* CDE2501 is ALWAYS compulsory and occupies exactly one pillar:
+  * No GESS course taken => CDE2501 satisfies the Singapore Studies (GE GESS) pillar, AND a TC satisfies Sustainable Futures in lieu.
+  * GESS course taken => GESS satisfies Singapore Studies, CDE2501 satisfies Sustainable Futures, and the third TC is read using UE (SF pillar cannot host a TC).
+  * CDE2501 must never be double-counted across SS and SF.
+* TCs that cannot be absorbed by ST/CN/SF pillars are read using UE space.
+* This substitution table does NOT apply to RC4 / UTCP / NUSC / RVRC / poly-graduate students; flag such cases for human review.
+
 ### EE Major Programme
 
 Implement the EE AY24 JC/non-poly major programme based on the checklist.
@@ -307,18 +362,20 @@ Model `EE2026 or EE2028` as a choice group. The course not used for the major ma
 
 Implement the AY24 JC/non-poly Technical Course rule:
 
-* Minimum 3 TC.
+* Minimum 3 TC (= 12 units).
 * TC is separate from TE.
 * TC and TE must be mutually exclusive.
-* Eligible TC courses:
+* The TC pool is a CLOSED list. Do not accept arbitrary EE3xxxC/EE3xxx as TC.
+* SEP courses may be mapped to TC for AY23/AY24 intakes.
+* Eligible TC courses (the entire closed set):
 
   * EE2026 or EE2028, whichever is not used to fulfil EE Major
-  * EE3033, effective from Sem 2 AY2025/26
+  * EE3033 (Systems Integration and Design Lab), TC-eligible from Sem 2 AY2025/26 (Sem 1 & 2 from AY2026/27); not an extended core; not a TE
   * EE3131C
   * EE3408C
   * EE3331C
   * EE3431C
-  * EE3731C
+  * EE3731C (Signal Analytics)
   * EE3104C
 
 ### TE rule
@@ -331,10 +388,12 @@ Implement the EE Technical Elective rule:
   * EE4xxx
   * EE3xxxC
   * EE3xxx
+  * For AY2024 intake specifically: CG3207, EE3105, EE3305, EE3306, EE3703, EE3801 are valid TEs (the UE-only restriction on these applies to AY2025 intake and after).
 * Exclusions:
 
   * EE3033 is not TE.
   * EE3031 can only fulfil UE for AY2021-AY2024 intake, not TE.
+  * Non-EE courses (MExxxx, CSxxxxDE, RBxxxx) cannot fulfil the EE TE rule (UE only). This includes the non-EE twins of cross-listed courses, e.g. ME3243 (twin of EE3305), ME3163 (twin of EE3306), ME3142 (twin of EE3331C). The non-EE twin may still satisfy a Specialisation elective, but never the TE rule.
 * TC and TE are mutually exclusive.
 * SEP special rule:
 
@@ -346,6 +405,15 @@ Implement the EE Technical Elective rule:
 Model UE as residual graduation capacity, not as a normal double-counting requirement.
 
 Specialisation courses can occupy UE space without consuming the specialisation's 8-unit double-counting budget, unless they are also allocated to another explicit requirement such as TE, TC, Common Curriculum, or another Specialisation.
+
+### Graduation-level constraints
+
+Enforce these (resolved from earlier ambiguities):
+
+* Level-1000 cap: no more than 60 units of level-1000 courses count toward the degree (excludes POY1901/2/3/8/9, POY1910T, CFG1010, ES1103, CFG1002, DYOC courses). Extra units beyond 60 do not count toward graduation but still count to GPA.
+* Internship (10 units) may be satisfied by combinations: EG3611A IA (10); or CFG2101 (4) + EG2605 UROP (4); or EG3612 VIA (6) + ...; or EG3611P (10, poly).
+* SEP residency: at least 50% of overall course units must be read at NUS; at least 60% of programme course requirements must be read at NUS.
+* S/U option / grade-free scheme is OUT OF SCOPE for this prototype.
 
 ### Specialisation global policy
 
@@ -377,6 +445,7 @@ This applies to:
 Also implement:
 
 * If capstone is used to fulfil SPT, IoT, Rbt, or MQM, then no SEP courses may be mapped to that respective Specialisation.
+* CDE4301/CDE4301A cannot fulfil a Specialisation in any Engineering major if it is also used to fulfil the IDP Second Major. (This is separate from the EE4002D/R 8-unit capstone overlap lock, which remains restricted to EE4002D/EE4002R.)
 
 ### SEP rules
 
@@ -486,7 +555,8 @@ Core:
 
 Electives:
 
-* Choose at least 2 from SET elective pool.
+* Choose at least 2 from SET elective pool (EE4501, EE4505, EE4438, EE4511).
+* Do NOT include the "Emerging Technologies" courses EE4032 / EE4205 as SET (or MQM) electives.
 
 #### Microelectronics and Quantum Materials, MQM
 
@@ -656,7 +726,7 @@ expected:
   warnings: []
 ```
 
-Implement these test cases at minimum:
+An expanded, source-referenced set of edge cases (closed TC list, non-EE-not-TE, CG3207/EE3305 AY2024 TE carve-outs, SEP->TC mapping, CDE4301 vs IDP, SEP residency, Emerging-Tech exclusion, etc.) is maintained in `review/edge_cases.yaml`. Implement these test cases at minimum:
 
 1. `major_core_pass_basic`
 

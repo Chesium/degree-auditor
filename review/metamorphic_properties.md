@@ -118,16 +118,22 @@ non-pass with a clear error/failed constraint — never a silent pass.
 ## MP-8. Alias canonicalisation idempotence & no double-credit
 **Property (a).** Replacing any course code in a transcript with its alias (EE3305↔ME3243,
 EE3306↔ME3163, EE4002D↔EE4002R for capstone-type, EE4436↔MLE4207, EE4802↔IE4213) does not
-change the audit result.
+change the audit result **for Specialisation/UE eligibility**.
 **Property (b).** Presenting *both* sides of an alias pair must not yield double credit;
 the second is ignored or flagged.
+**Property (c) — asymmetric TE eligibility.** Alias equivalence is NOT symmetric for the TE
+rule: the non-EE side (ME3243/ME3163/ME3142/etc.) is never TE-eligible even though its EE twin
+may be. So replacing EE3305 with ME3243 must *not* preserve TE-satisfaction (`TE_EXCLUDE_NON_EE`),
+only Specialisation/UE satisfaction.
 
-**Rationale.** SPC p.6, p.8, p.11; aliases are equivalences, not distinct courses.
+**Rationale.** SPC p.6, p.8, p.11; aliases are equivalences for content, but TE26 Note 2 makes
+non-EE courses UE-only for the TE rule.
 
-**Test sketch.** `alias_ee3305_me3243_robotics_basket` (a) and
-`alias_ee3306_me3163_double_count_fail` (b).
+**Test sketch.** `alias_ee3305_me3243_robotics_basket` (a), `alias_ee3306_me3163_double_count_fail`
+(b), and `non_ee_course_not_te_fail` vs `ee3305_te_ay24_pass` (c).
 
-**Likely break.** Alias map applied for eligibility but not for de-duplication of units.
+**Likely break.** Alias map applied symmetrically so a non-EE twin "becomes" TE-eligible; or
+alias applied for eligibility but not for de-duplication of units.
 
 ---
 
@@ -249,6 +255,82 @@ failed-requirement and failed-constraint sets are unchanged.
 
 ---
 
+## MP-18. Closed TC pool — no out-of-list satisfaction
+**Property.** Adding a course outside the closed TC list (anything other than unused
+EE2026/EE2028, EE3033, or the six extended cores) never increases the satisfied-TC count.
+Only members of the closed set can move TC from k/3 to (k+1)/3.
+
+**Rationale.** A-01 RESOLVED (TCL, FAQ Q3). The TC pool is a fixed enumerated set.
+
+**Test sketch.** `tc_closed_list_reject_fail` — EE3801 as TC must not count.
+
+**Likely break.** A regex like `EE3\d{3}C?` used as the TC predicate, accepting any EE3xxx.
+
+---
+
+## MP-19. SEP residency/programme monotonicity
+**Property.** Converting an NUS attempt to a SEP attempt (same course/units) can only move the
+NUS-residency ratio downward; once it crosses below 50% overall (or below 60% of programme),
+the corresponding constraint flips to fail and never back to pass while more NUS courses are
+removed.
+
+**Rationale.** SEP p.2 — residency ≥50% overall, programme ≥60% at NUS.
+
+**Test sketch.** `sep_residency_below_50_fail`; plus a paired fixture just above 50% that passes.
+
+**Likely break.** Residency not computed at all (SEP treated like NUS), so mass SEP mapping
+silently passes.
+
+---
+
+## MP-21. TC substitution is unit-neutral
+**Property.** Moving a TC from UE into a vacated Common Curriculum pillar (Systems Thinking /
+Creating Narratives / Sustainable Futures), or vice versa, must not change the total graduation
+units (stays 160) nor the satisfied-TC count. The 3 inflight TCs reallocate CC pillar / UE
+space; they never add 12 units on top of the degree.
+
+**Rationale.** GRB p.4, p.12; FAQ Q4; CTK p.7 — the TCs are read *in lieu of* pillar courses or
+using UE, not as an extra block.
+
+**Test sketch.** `cc_tc_count_not_inflated`: assert total units == 160 whether the three TCs are
+booked under ST/CN/SF pillars or under UE. Pair with `cc_cde2501_to_sf_with_gess_pass` (third TC
+overflows to UE) — both must report the same 160 total.
+
+**Likely break.** A separate 12-unit TC requirement added to CC 60 + UE 40 + Major 60, yielding
+172 and over-counting; or TC double-use into a CC pillar mistakenly flagged as a TC<->TE
+violation.
+
+---
+
+## MP-22. CDE2501 single-pillar exclusivity
+**Property.** Across the Singapore Studies and Sustainable Futures pillars, CDE2501's 4 units are
+counted **exactly once**. Exactly one of the two branches holds: (no GESS ⇒ CDE2501→SS, TC→SF)
+or (GESS ⇒ GESS→SS, CDE2501→SF). Adding a GESS course flips CDE2501 from SS to SF but never
+lets it occupy both.
+
+**Rationale.** FAQ Q5/Q6; GRB p.10; CDE2501 is always compulsory but occupies one pillar.
+
+**Test sketch.** `cc_cde2501_to_gess_no_gess_pass` vs `cc_cde2501_to_sf_with_gess_pass` (branch
+flip) and `cc_double_count_cde2501_fail` (both pillars ⇒ fail).
+
+**Likely break.** Treating CDE2501 as satisfying SS and SF simultaneously, fabricating 4 units.
+
+---
+
+## MP-20. Intake-parameterised TE eligibility
+**Property.** For the AY2024 cohort config, CG3207/EE3105/EE3305/EE3306/EE3703/EE3801 are
+TE-eligible; for an AY2025+ cohort config the same courses are UE-only. Swapping only the
+cohort parameter must flip TE-eligibility for exactly these courses and nothing else.
+
+**Rationale.** TE26 Note 3; GRB p.9 (AY2021–AY2024 TE table).
+
+**Test sketch.** `cg3207_te_ay24_pass`, `ee3305_te_ay24_pass` (AY2024 pass); mirror cases under
+an AY2025 config should fail. Confirms the rule is data-driven by intake, not hard-coded.
+
+**Likely break.** A single global "UE-only" list that ignores the cohort, wrongly failing AY2024.
+
+---
+
 ## Summary table
 
 | id | invariant | primary source | guarded test case |
@@ -260,7 +342,7 @@ failed-requirement and failed-constraint sets are unchanged.
 | MP-5 | UE residual neutrality | PRM 362 | ue_residual_does_not_consume_overlap |
 | MP-6 | manual dominance + constraint persistence | PRM 547 | manual_override_changes_greedy_choice |
 | MP-7 | manual validity gate | PRM 547 | manual_alloc_* |
-| MP-8 | alias idempotence / no double-credit | SPC 6,8,11 | alias_* |
+| MP-8 | alias idempotence / no double-credit / asym TE | SPC 6,8,11; TE26 Note 2 | alias_*, non_ee_course_not_te_fail |
 | MP-9 | capstone lock monotonicity | SPC 1 | robotics_capstone_overlap_lock_fail |
 | MP-10 | SEP per-spec cap monotonicity | SPC 1 | sep_specialisation_*_units_* |
 | MP-11 | SEP cross-spec exclusivity | SPC 1 | sep_same_course_two_specialisations_fail |
@@ -270,3 +352,8 @@ failed-requirement and failed-constraint sets are unchanged.
 | MP-15 | determinism | PRM 89 | test_cli_snapshots |
 | MP-16 | overlap⇔distinct consistency | SPC 1 | mqm_ee2027_overlap_budget |
 | MP-17 | UE-only courses inert | PRM 346 | (new) |
+| MP-18 | closed TC pool | A-01 (TCL/FAQ) | tc_closed_list_reject_fail |
+| MP-19 | SEP residency monotonicity | SEP p.2 | sep_residency_below_50_fail |
+| MP-20 | intake-parameterised TE eligibility | TE26 Note 3; GRB p.9 | cg3207_te_ay24_pass, ee3305_te_ay24_pass |
+| MP-21 | TC substitution unit-neutral | GRB p.4,12; FAQ Q4; CTK p.7 | cc_tc_count_not_inflated |
+| MP-22 | CDE2501 single-pillar exclusivity | FAQ Q5/Q6; GRB p.10 | cc_cde2501_*; cc_double_count_cde2501_fail |
