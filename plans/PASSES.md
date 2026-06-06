@@ -143,3 +143,66 @@ Align text report sections with black-box snapshots.
 Include missing courses/units, overlap, capstone lock, SEP mapped units, manual warnings.
 Add deterministic ordering for transcript/config/allocation output.
 Tests: snapshot/substrings, repeated JSON identical, plan-allocation round-trip.
+
+Pass 18: Review Contract Scoping + Warning Vocabulary
+
+Implement edge-contract scoped pass semantics without weakening normal full audit reporting.
+Normalize warning strings to match edge_cases.yaml expected substrings.
+Ensure failed requirements/constraints always preserve source refs.
+Add list-constraints if still missing from the full public contract.
+Promote baseline scoped cases: major-only, TC-only, config-identical, source-ref, order-independence, and warning-only xfails.
+
+
+Pass 19: Final ID Registry + Slot Alias Alignment
+
+Fully honor meta.slot_to_requirement for accepted allocation slot IDs and reported requirement IDs.
+Add EE24JC_MAJOR_DIGITAL input support.
+Normalize Robotics, SPT, MQM, AE, IoT, SET public requirement IDs.
+Ensure contract emits only review-facing IDs where the review vocabulary defines them.
+Add guard tests comparing emitted IDs against edge_cases.yaml / rule_inventory.md.
+
+
+Pass 20: General Single-Instance + Overlap Conflict Rules
+
+Implement broader DOUBLE_USE_SINGLE_INSTANCE.
+Implement SPEC_OVERLAP_SINGLE_INSTANCE for capstone reused across multiple specs.
+Tighten major-choice vs TC duplicate use, especially EE2026/EE2028.
+Preserve allowed specialisation overlap budget behavior.
+Promote ee2026_both_to_major_and_tc_fail and capstone_double_count_two_specs_fail.
+
+
+Pass 21: Specialisation Contract Closure
+
+Emit exact public failures for:
+CAP_LOCK, SPEC_MAX_OVERLAP_8, SEP_CAPSTONE_FORBIDS_SEP, SEP_SPEC_MAX_8, SEP_SPEC_NO_REUSE.
+Align Robotics untagged capstone failure with expected path failures.
+Ensure AE, Robotics, MQM, SPT, SEP-specialisation, and UE-residual overlap fixtures 
+
+pass under subset semantics.
+Promote the remaining specialisation and SEP-specialisation xfails.
+
+
+Pass 22: SPT iDP + EG4301 Corrections
+
+Finalize SPT iDP replacement path activation.
+Without IDP, reject/ignore iDP replacement path with public SPT_CORE failure.
+With IDP, allow replacement path but prevent EG4301 units from counting to SPT.
+Emit SPT_EG4301_NOT_COUNTED.
+Promote the SPT iDP xfails.
+
+
+Pass 23: Manual Allocation Contract Finalization
+
+Resolve the prompt-vs-current behavior for MANUAL_ALLOC_INELIGIBLE.
+If following updated prompt.txt, make ineligible manual target exit 1; otherwise update review docs/harness consciously.
+Ensure invalid manual allocation output includes the required public constraint IDs and readable error text.
+Add regression tests around exit code 1 vs 2.
+
+
+Pass 24: Black-Box Full Coverage Closure
+
+Remove all remaining UNSUPPORTED_CASES.
+Run the full review/edge_cases.yaml harness with no xfails.
+Add vocabulary preflight from black_box_test_plan.md: all slot IDs accepted, all reported IDs emitted, all used constraint IDs known.
+Add deterministic text/json/yaml checks for all supported edge cases.
+Final acceptance target: uv run pytest green with 65/65 edge cases active.
