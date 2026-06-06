@@ -123,3 +123,34 @@ constraints:
       section: SEP rules
       quote: A SEP course approved for one Specialisation should not be mapped again to another Specialisation or Minor.
       notes: Minor checks are out of scope for this prototype pass; cross-specialisation reuse is enforced.
+  - id: TE_EXCLUDE_NON_EE
+    description: Non-EE courses cannot fulfil the EE Technical Elective rule.
+    constraint_type: te_exclude_non_ee
+    params:
+      requirement_id: EE24JC_TE
+    source_ref:
+      document: EE_TechElectives_AY2026_iii.pdf
+      page: 4
+      section: Notes
+      quote: Non-EE courses count towards UE requirements only. They cannot be used to fulfil EE Tech elective rules.
+      notes: Applies even when a non-EE course is cross-listed with an EE course.
+  - id: TC_EFFECTIVE_DATE_EE3033
+    description: EE3033 is TC-eligible only from Semester 2 AY2025/26.
+    constraint_type: tc_effective_date_ee3033
+    params:
+      course: EE3033
+      earliest_term: AY2025-2026 S2
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Technical Courses
+      quote: EE3033 Systems Integration and Design (wef sem2 AY25/26)
+  - id: ALIAS_DUPLICATE_CREDIT
+    description: Cross-listed aliases cannot be credited as distinct course instances for the same requirement.
+    constraint_type: alias_duplicate_credit
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 6
+      section: Cross-listed courses
+      quote: EE3306/ME3163 Introduction to Cyber Physical Systems
+      notes: Also applies to EE3305/ME3243 and EE3331C/ME3142.

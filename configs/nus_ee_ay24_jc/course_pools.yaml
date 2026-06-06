@@ -64,6 +64,7 @@ course_pools:
       - EE4212
       - EE4216
       - EE4218
+      - EE3305
       - EE4308
       - EE4309
       - EE4311
@@ -137,4 +138,3 @@ course_pools:
       section: Microelectronics and Quantum Materials
       quote: MQM Electives Choose at least 3 courses (12 units equivalent) from the following
       notes: Related-area project options require topic tags when evaluated in later passes.
-

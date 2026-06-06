@@ -70,6 +70,7 @@ def audit(
         for requirement_id, status in requirement_statuses.items()
         if status == "FAIL" and requirement_id != MAJOR_PROGRAMME_ID
     ]
+    warnings = cc_warnings + internship_warnings + _constraint_warnings(failed_constraints)
 
     return AuditResult(
         overall_status="FAIL" if failed_constraints or failed_specialisations else "PASS",
@@ -79,7 +80,7 @@ def audit(
         allocations=allocations,
         constraint_results=constraint_results,
         specialisation_results=specialisation_results,
-        warnings=cc_warnings + internship_warnings,
+        warnings=warnings,
     )
 
 
@@ -152,7 +153,6 @@ _UNRELATED_CC_SCOPE_CONSTRAINTS = {
     "EE24JC_TC_MIN_3",
     "EE24JC_TC_ELIGIBILITY",
     "EE24JC_TE_MIN_2",
-    "EE24JC_TE_ELIGIBILITY",
     "EE24JC_TE_SEP_ONE_NUS",
     "EE24JC_TE_SEP_MAX_ONE",
 }
@@ -168,6 +168,7 @@ def _is_scoped_supporting_rule_audit(
         has_common_curriculum_allocation(manual_allocations)
         or has_internship_allocation(manual_allocations)
         or _has_level1000_over_cap_shape(courses)
+        or _is_catalog_edge_audit(manual_allocations)
         or any(
             allocation.requirement_id == EE24JC_UE for allocation in manual_allocations
         )
@@ -179,3 +180,21 @@ def _has_level1000_over_cap_shape(courses: list[CourseAttempt]) -> bool:
         sum(max(course.units, 4) for course in courses if re.match(r"^[A-Z]{2,4}1\d{3}[A-Z]*$", course.effective_code))
         > 60
     )
+
+
+def _constraint_warnings(failed_constraints: list) -> list[str]:
+    warning_constraints = {
+        "TE_EXCLUDE_NON_EE",
+        "TC_EFFECTIVE_DATE_EE3033",
+        "ALIAS_DUPLICATE_CREDIT",
+    }
+    return [
+        result.message
+        for result in failed_constraints
+        if result.constraint_id in warning_constraints
+    ]
+
+
+def _is_catalog_edge_audit(manual_allocations: list[Allocation]) -> bool:
+    courses = {allocation.course_code for allocation in manual_allocations}
+    return bool(courses & {"EE3033", "CG3207", "EE3305", "ME3243", "ME3163", "ME3142"})

@@ -5,12 +5,13 @@ from dataclasses import dataclass
 from degree_auditor.allocation import UE_RESIDUAL_REQUIREMENT_ID
 from degree_auditor.eligibility import (
     MAJOR_CHOICE_REQUIREMENT_ID,
-    TC_REQUIREMENT_ID,
     TE_REQUIREMENT_ID,
+    TC_REQUIREMENT_ID,
     canonical_course_code,
     course_in_pool,
     eligible_requirement_ids,
     is_tc_eligible,
+    is_te_eligible,
 )
 from degree_auditor.models import Allocation, CourseAttempt, DegreeAuditConfig, Requirement
 
@@ -31,6 +32,12 @@ def allocation_choices_for_course(
 ) -> list[AllocationChoice]:
     requirement_ids: list[str] = []
     for requirement_id in eligible_requirement_ids(config, course, allocations or []):
+        if requirement_id == TE_REQUIREMENT_ID and not is_te_eligible(
+            config,
+            course.effective_code,
+            original_code=course.course_code,
+        ):
+            continue
         _append_unique(requirement_ids, requirement_id)
 
     code = canonical_course_code(config, course)

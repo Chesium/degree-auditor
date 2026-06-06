@@ -39,3 +39,33 @@ course_aliases:
       section: Major Requirements
       quote: EG2605 Undergraduate Research Opportunities Programme UROP (4 units)
       notes: Current internship materials list CDE2605/CDE2605R for UROP/UREx.
+  - id: EE3305_ME3243_ALIAS
+    alias: ME3243
+    canonical: EE3305
+    description: ME3243 is the ME-coded twin of EE3305 Robotic System Design.
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 8
+      section: Robotics
+      quote: EE3305/ME3243 Robotic System Design
+      notes: Alias grants specialisation/UE matching only; ME3243 is not EE TE-eligible.
+  - id: EE3306_ME3163_ALIAS
+    alias: ME3163
+    canonical: EE3306
+    description: ME3163 is the ME-coded twin of EE3306 Introduction to Cyber Physical Systems.
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 6
+      section: Industry 4.0
+      quote: EE3306/ME3163 Introduction to Cyber Physical Systems
+      notes: Alias grants specialisation/UE matching only; ME3163 is not EE TE-eligible.
+  - id: EE3331C_ME3142_ALIAS
+    alias: ME3142
+    canonical: EE3331C
+    description: ME3142 is the ME-coded twin of EE3331C Feedback Control Systems.
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 6
+      section: Industry 4.0
+      quote: EE3331C or ME3142
+      notes: Alias grants specialisation/UE matching only; ME3142 is not EE TE-eligible.

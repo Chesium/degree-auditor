@@ -38,6 +38,7 @@ course_pools:
       - EE4xxx
       - EE3xxxC
       - EE3xxx
+      - CG3207
     excludes:
       - EE3033
       - EE3031
@@ -46,4 +47,4 @@ course_pools:
       page: 1
       section: Major Requirements
       quote: Any combination of Technical elective EE4xxx, Extended Core EE3xxxC, EE3xxx (does not include EE3033)
-      notes: EE3031 can only fulfil UE for AY2021-AY2024 intake, not TE.
+      notes: EE3031 can only fulfil UE for AY2021-AY2024 intake, not TE. For AY2024 intake, CG3207, EE3105, EE3305, EE3306, EE3703, and EE3801 remain TE-eligible.

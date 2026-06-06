@@ -9,6 +9,7 @@ from degree_auditor.eligibility import (
     TC_REQUIREMENT_ID,
     TE_REQUIREMENT_ID,
     canonical_code,
+    is_non_ee_te_excluded,
     is_tc_eligible,
     is_te_eligible,
     major_choice_course,
@@ -36,8 +37,11 @@ def evaluate_constraints(
     results.append(_evaluate_min_count(config, allocations, TE_REQUIREMENT_ID, "EE24JC_TE_MIN_2", minimum=2))
     results.extend(_evaluate_tc_te_mutual_exclusion(config, allocations))
     results.extend(_evaluate_tc_eligibility(config, allocations))
+    results.extend(_evaluate_ee3033_tc_effective_date(config, courses, allocations))
     results.extend(_evaluate_te_eligibility(config, courses, allocations))
+    results.extend(_evaluate_non_ee_te_exclusion(config, courses, allocations))
     results.extend(_evaluate_te_sep_rules(config, courses, allocations))
+    results.extend(_evaluate_alias_duplicate_credit(config, courses, allocations))
     return results
 
 
@@ -167,7 +171,12 @@ def _evaluate_te_eligibility(
             for allocation in allocations
             if allocation.requirement_id == TE_REQUIREMENT_ID
             and allocation.allocation_role != "ignored"
-            and not is_te_eligible(config, _effective_code_for_allocation(config, courses, allocation))
+            and not is_te_eligible(
+                config,
+                _effective_code_for_allocation(config, courses, allocation),
+                original_code=allocation.course_code,
+            )
+            and not is_non_ee_te_excluded(allocation.course_code)
         }
     )
     if not failures:
@@ -178,6 +187,91 @@ def _evaluate_te_eligibility(
             False,
             "One or more TE allocations are not eligible; EE3031 and EE3033 cannot fulfil the TE rule.",
             affected_courses=failures,
+        )
+    ]
+
+
+def _evaluate_non_ee_te_exclusion(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
+    constraint = _constraint(config, "TE_EXCLUDE_NON_EE")
+    failures = sorted(
+        {
+            allocation.course_code
+            for allocation in allocations
+            if allocation.requirement_id == TE_REQUIREMENT_ID
+            and allocation.allocation_role != "ignored"
+            and is_non_ee_te_excluded(allocation.course_code)
+        }
+    )
+    if not failures:
+        return [_result(constraint, True, "No non-EE course is allocated to the EE TE rule.")]
+    messages = [
+        f"{course_code} is a non-EE course; it counts toward UE only, not the EE TE rule"
+        for course_code in failures
+    ]
+    return [_result(constraint, False, "; ".join(messages), affected_courses=failures)]
+
+
+def _evaluate_ee3033_tc_effective_date(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
+    constraint = _constraint(config, "TC_EFFECTIVE_DATE_EE3033")
+    failures = []
+    for allocation in allocations:
+        if (
+            allocation.requirement_id == TC_REQUIREMENT_ID
+            and allocation.allocation_role != "ignored"
+            and canonical_code(config, allocation.course_code) == "EE3033"
+        ):
+            attempt = _attempt_for_allocation(config, courses, allocation)
+            if attempt is not None and not _term_at_or_after_ay25_26_s2(attempt.term):
+                failures.append(allocation.course_code)
+    if not failures:
+        return [_result(constraint, True, "EE3033 TC allocations satisfy the AY2025/26 Sem 2 effective date.")]
+    return [
+        _result(
+            constraint,
+            False,
+            "EE3033 is TC-eligible only from Semester 2 AY2025/26; attempt term precedes this",
+            affected_courses=sorted(set(failures)),
+        )
+    ]
+
+
+def _evaluate_alias_duplicate_credit(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
+    constraint = _constraint(config, "ALIAS_DUPLICATE_CREDIT")
+    by_requirement: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
+    for allocation in allocations:
+        if allocation.allocation_role == "ignored":
+            continue
+        canonical = canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
+        by_requirement[allocation.requirement_id][canonical].add(allocation.course_code)
+    duplicates = sorted(
+        {
+            course_code
+            for canonical_to_codes in by_requirement.values()
+            for codes in canonical_to_codes.values()
+            if len(codes) > 1
+            for course_code in codes
+        }
+    )
+    if not duplicates:
+        return [_result(constraint, True, "No cross-listed alias is credited twice for the same requirement.")]
+    return [
+        _result(
+            constraint,
+            False,
+            _alias_duplicate_message(duplicates),
+            affected_courses=duplicates,
         )
     ]
 
@@ -278,6 +372,28 @@ def _effective_code_for_allocation(
 
 def _is_sep_restricted_te_code(course_code: str) -> bool:
     return re.match(r"^EE4\d{3}$", course_code) is not None or re.match(r"^EE3\d{3}C$", course_code) is not None
+
+
+def _term_at_or_after_ay25_26_s2(term: str | None) -> bool:
+    if term is None:
+        return True
+    match = re.match(r"^AY(\d{4})-(\d{4}) S([12])$", term.strip().upper())
+    if match is None:
+        return True
+    start_year = int(match.group(1))
+    semester = int(match.group(3))
+    return (start_year, semester) >= (2025, 2)
+
+
+def _alias_duplicate_message(course_codes: list[str]) -> str:
+    codes = set(course_codes)
+    if {"EE3306", "ME3163"} <= codes:
+        return "EE3306 and ME3163 are the same course; only one may be credited"
+    if {"EE3305", "ME3243"} <= codes:
+        return "EE3305 and ME3243 are the same course; only one may be credited"
+    if {"EE3331C", "ME3142"} <= codes:
+        return "EE3331C and ME3142 are the same course; only one may be credited"
+    return "Cross-listed alias courses may only be credited once for the same requirement."
 
 
 def _constraint(config: DegreeAuditConfig, constraint_id: str) -> Constraint | None:
