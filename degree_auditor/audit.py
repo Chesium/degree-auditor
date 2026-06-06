@@ -97,6 +97,7 @@ def audit(
         + inferred_specialisation_warnings
         + _specialisation_warnings(specialisation_results)
         + _constraint_warnings(failed_constraints)
+        + _positive_constraint_warnings(constraint_results)
     )
 
     return AuditResult(
@@ -183,6 +184,7 @@ _UNRELATED_CC_SCOPE_CONSTRAINTS = {
     "EE24JC_TE_MIN_2",
     "EE24JC_TE_SEP_ONE_NUS",
     "EE24JC_TE_SEP_MAX_ONE",
+    "SEP_PROGRAMME_60",
 }
 
 _UNRELATED_INFERRED_SPEC_SCOPE_CONSTRAINTS = {
@@ -202,6 +204,7 @@ def _is_scoped_supporting_rule_audit(
         or _has_level1000_over_cap_shape(courses)
         or _is_catalog_edge_audit(manual_allocations)
         or _is_specialisation_edge_audit(manual_allocations)
+        or _is_sep_tc_edge_audit(manual_allocations, courses)
         or any(
             allocation.requirement_id == EE24JC_UE for allocation in manual_allocations
         )
@@ -222,11 +225,22 @@ def _constraint_warnings(failed_constraints: list) -> list[str]:
         "ALIAS_DUPLICATE_CREDIT",
         "MANUAL_ALLOC_INELIGIBLE",
         "CDE4301_NO_SPEC_IF_IDP",
+        "SEP_RESIDENCY_50",
+        "SEP_PROGRAMME_60",
+        "SEP_MAY_MAP_TC",
     }
     return [
         result.message
         for result in failed_constraints
         if result.constraint_id in warning_constraints
+    ]
+
+
+def _positive_constraint_warnings(constraint_results: list) -> list[str]:
+    return [
+        result.message
+        for result in constraint_results
+        if result.constraint_id == "SEP_MAY_MAP_TC" and result.passed and result.affected_courses
     ]
 
 
@@ -247,6 +261,14 @@ def _specialisation_warnings(specialisation_results: list) -> list[str]:
 def _is_catalog_edge_audit(manual_allocations: list[Allocation]) -> bool:
     courses = {allocation.course_code for allocation in manual_allocations}
     return bool(courses & {"EE3033", "CG3207", "EE3305", "ME3243", "ME3163", "ME3142"})
+
+
+def _is_sep_tc_edge_audit(manual_allocations: list[Allocation], courses: list[CourseAttempt]) -> bool:
+    sep_codes = {course.course_code for course in courses if str(course.source) == "SEP"}
+    return any(
+        allocation.requirement_id == TC_REQUIREMENT_ID and allocation.course_code in sep_codes
+        for allocation in manual_allocations
+    )
 
 
 def _is_specialisation_edge_audit(manual_allocations: list[Allocation]) -> bool:

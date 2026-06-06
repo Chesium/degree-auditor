@@ -123,6 +123,39 @@ constraints:
       section: SEP rules
       quote: A SEP course approved for one Specialisation should not be mapped again to another Specialisation or Minor.
       notes: Minor checks are out of scope for this prototype pass; cross-specialisation reuse is enforced.
+  - id: SEP_RESIDENCY_50
+    description: At least 50% of overall attempted units must be read at NUS.
+    constraint_type: sep_residency_50
+    params:
+      min_ratio: 0.5
+    source_ref:
+      document: ECE_SEP_Outgoing_AY2627_30Jan26.pdf
+      page: 2
+      section: SEP residency
+      quote: "Residency requirements: Minimum 50% of overall courses must be read in NUS"
+      notes: Implemented as a unit ratio over transcript attempts in Pass 15.
+  - id: SEP_PROGRAMME_60
+    description: At least 60% of allocated non-UE programme requirement units must be read at NUS.
+    constraint_type: sep_programme_60
+    params:
+      min_ratio: 0.6
+    source_ref:
+      document: ECE_SEP_Outgoing_AY2627_30Jan26.pdf
+      page: 2
+      section: SEP residency
+      quote: Residency requirements include a minimum percentage of programme requirements read at NUS.
+      notes: Prototype denominator is explicit allocated non-UE audited requirement units.
+  - id: SEP_MAY_MAP_TC
+    description: AY23/AY24 intake students may map approved SEP courses to the TC requirement.
+    constraint_type: sep_may_map_tc
+    params:
+      requirement_id: EE24JC_TC
+    source_ref:
+      document: ECE_SEP_Outgoing_AY2627_30Jan26.pdf
+      page: 2
+      section: SEP to TC mapping
+      quote: AY23 and AY24 intake students may take SEP courses to map to Technical Course (TC) requirements
+      notes: Cohort is fixed to AY24 JC/non-poly in this prototype.
   - id: TE_EXCLUDE_NON_EE
     description: Non-EE courses cannot fulfil the EE Technical Elective rule.
     constraint_type: te_exclude_non_ee

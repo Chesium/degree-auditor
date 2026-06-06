@@ -20,6 +20,8 @@ def test_sep_te_one_nus_one_sep_pass() -> None:
 
     assert result.overall_status == "PASS"
     assert _constraint(result, "EE24JC_TE_SEP_ONE_NUS").passed
+    assert result.overall_status == "PASS"
+    assert _constraint(result, "EE24JC_TE_SEP_ONE_NUS").passed
     assert _constraint(result, "EE24JC_TE_SEP_MAX_ONE").passed
 
 
@@ -130,6 +132,121 @@ def test_spt_capstone_sep_forbidden_fail() -> None:
     assert spt.status == "FAIL"
     assert "SPT_SEP_FORBIDDEN_WITH_CAPSTONE" in spt.failed_requirements
     assert any("SEP mapping is forbidden" in message for message in spt.messages)
+
+
+def test_sep_residency_below_50_fail() -> None:
+    config = load_config([CONFIG])
+    courses = [
+        CourseAttempt(course_code="SEP2012", source="SEP", mapped_to="EE2012"),
+        CourseAttempt(course_code="SEP2022", source="SEP", mapped_to="EE2022"),
+        CourseAttempt(course_code="SEP2023", source="SEP", mapped_to="EE2023"),
+        CourseAttempt(course_code="SEP2027", source="SEP", mapped_to="EE2027"),
+        CourseAttempt(course_code="EE1111A"),
+        CourseAttempt(course_code="EE2111A"),
+        CourseAttempt(course_code="PC2020"),
+    ]
+
+    result = audit(config, courses, [])
+    residency = _constraint(result, "SEP_RESIDENCY_50")
+
+    assert result.overall_status == "FAIL"
+    assert not residency.passed
+    assert residency.source_ref is not None
+    assert "NUS residency below 50% of overall courses" in residency.message
+    assert "NUS residency below 50% of overall courses" in result.warnings[0]
+
+
+def test_sep_programme_60_fail() -> None:
+    result = _audit_with(
+        [
+            Allocation(course_code="SEP2012", requirement_id="EE24JC_MAJOR_CORE"),
+            Allocation(course_code="SEP2022", requirement_id="EE24JC_MAJOR_CORE"),
+            Allocation(course_code="SEP2023", requirement_id="EE24JC_MAJOR_CORE"),
+            Allocation(course_code="EE1111A", requirement_id="EE24JC_MAJOR_CORE"),
+            Allocation(course_code="EE2111A", requirement_id="EE24JC_MAJOR_CORE"),
+        ],
+        extra_attempts=[
+            CourseAttempt(course_code="SEP2012", source="SEP", mapped_to="EE2012"),
+            CourseAttempt(course_code="SEP2022", source="SEP", mapped_to="EE2022"),
+            CourseAttempt(course_code="SEP2023", source="SEP", mapped_to="EE2023"),
+        ],
+    )
+
+    programme = _constraint(result, "SEP_PROGRAMME_60")
+    assert result.overall_status == "FAIL"
+    assert not programme.passed
+    assert "Programme residency below 60%" in programme.message
+
+
+def test_sep_programme_60_pass() -> None:
+    result = _audit_with(
+        [
+            Allocation(course_code="SEP2012", requirement_id="EE24JC_MAJOR_CORE"),
+            Allocation(course_code="EE2022", requirement_id="EE24JC_MAJOR_CORE"),
+            Allocation(course_code="EE2023", requirement_id="EE24JC_MAJOR_CORE"),
+            Allocation(course_code="EE1111A", requirement_id="EE24JC_MAJOR_CORE"),
+            Allocation(course_code="EE2111A", requirement_id="EE24JC_MAJOR_CORE"),
+        ],
+        extra_attempts=[
+            CourseAttempt(course_code="SEP2012", source="SEP", mapped_to="EE2012"),
+        ],
+    )
+
+    assert _constraint(result, "SEP_PROGRAMME_60").passed
+
+
+def test_sep_mapped_to_tc_pass() -> None:
+    result = _audit_with(
+        [
+            Allocation(course_code="EE2028", requirement_id="EE24JC_MAJOR_DIGITAL_CHOICE"),
+            Allocation(course_code="EE3408C", requirement_id="EE24JC_TC"),
+            Allocation(course_code="EE3331C", requirement_id="EE24JC_TC"),
+            Allocation(course_code="SEP3431", requirement_id="EE24JC_TC"),
+        ],
+        extra_attempts=[
+            CourseAttempt(course_code="SEP3431", source="SEP", mapped_to="EE3431C", approved_for=["EE_TC"]),
+        ],
+    )
+
+    sep_tc = _constraint(result, "SEP_MAY_MAP_TC")
+    assert sep_tc.passed
+    assert "SEP course SEP3431 mapped to TC" in sep_tc.message
+    assert "SEP course SEP3431 mapped to TC (allowed for AY23/AY24 intakes)" in result.warnings
+
+
+def test_extra_sep_te_to_ue_pass() -> None:
+    result = _audit_with(
+        _base_passing_allocations(te_courses=["EE4211", "SEP4308"])
+        + [
+            Allocation(course_code="SEP4216", requirement_id="EE24JC_UE", allocation_role="residual_ue"),
+        ],
+        extra_attempts=[
+            CourseAttempt(course_code="SEP4308", source="SEP", mapped_to="EE4308"),
+            CourseAttempt(course_code="SEP4216", source="SEP", mapped_to="EE4216"),
+        ],
+    )
+
+    failed_constraints = {item.constraint_id for item in result.constraint_results if not item.passed}
+    assert result.overall_status == "PASS"
+    assert "EE24JC_TE_SEP_MAX_ONE" not in failed_constraints
+
+
+def test_extra_sep_te_to_major_te_fail() -> None:
+    result = _audit_with(
+        _base_passing_allocations(te_courses=["EE4211", "SEP4308"])
+        + [
+            Allocation(course_code="SEP4216", requirement_id="EE24JC_TE"),
+        ],
+        extra_attempts=[
+            CourseAttempt(course_code="SEP4308", source="SEP", mapped_to="EE4308"),
+            CourseAttempt(course_code="SEP4216", source="SEP", mapped_to="EE4216"),
+        ],
+    )
+
+    max_one = _constraint(result, "EE24JC_TE_SEP_MAX_ONE")
+    assert result.overall_status == "FAIL"
+    assert not max_one.passed
+    assert set(max_one.affected_courses) == {"SEP4308", "SEP4216"} or max_one.affected_courses
 
 
 def _audit_with(

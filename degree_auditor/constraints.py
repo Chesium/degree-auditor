@@ -4,6 +4,7 @@ from collections import defaultdict
 import re
 
 from degree_auditor.allocation import FIXED_MAJOR_CORE_REQUIREMENT_ID
+from degree_auditor.allocation import UE_RESIDUAL_REQUIREMENT_ID
 from degree_auditor.eligibility import (
     MAJOR_CHOICE_REQUIREMENT_ID,
     TC_REQUIREMENT_ID,
@@ -36,11 +37,13 @@ def evaluate_constraints(
     results.append(_evaluate_min_count(config, allocations, TC_REQUIREMENT_ID, "EE24JC_TC_MIN_3", minimum=3))
     results.append(_evaluate_min_count(config, allocations, TE_REQUIREMENT_ID, "EE24JC_TE_MIN_2", minimum=2))
     results.extend(_evaluate_tc_te_mutual_exclusion(config, allocations))
-    results.extend(_evaluate_tc_eligibility(config, allocations))
+    results.extend(_evaluate_tc_eligibility(config, allocations, courses))
     results.extend(_evaluate_ee3033_tc_effective_date(config, courses, allocations))
     results.extend(_evaluate_te_eligibility(config, courses, allocations))
     results.extend(_evaluate_non_ee_te_exclusion(config, courses, allocations))
     results.extend(_evaluate_te_sep_rules(config, courses, allocations))
+    results.extend(_evaluate_sep_residency_rules(config, courses, allocations))
+    results.extend(_evaluate_sep_to_tc_rule(config, courses, allocations))
     results.extend(_evaluate_alias_duplicate_credit(config, courses, allocations))
     return results
 
@@ -135,14 +138,19 @@ def _evaluate_tc_te_mutual_exclusion(
     ]
 
 
-def _evaluate_tc_eligibility(config: DegreeAuditConfig, allocations: list[Allocation]) -> list[ConstraintResult]:
+def _evaluate_tc_eligibility(
+    config: DegreeAuditConfig,
+    allocations: list[Allocation],
+    courses: list[CourseAttempt] | None = None,
+) -> list[ConstraintResult]:
     constraint = _constraint(config, "EE24JC_TC_ELIGIBILITY")
     failures: list[str] = []
     choice = major_choice_course(allocations)
     for allocation in allocations:
         if allocation.requirement_id != TC_REQUIREMENT_ID or allocation.allocation_role == "ignored":
             continue
-        if not is_tc_eligible(config, allocation.course_code, allocations):
+        course_code = _effective_code_for_allocation(config, courses or [], allocation)
+        if not is_tc_eligible(config, course_code, allocations):
             if allocation.course_code in {"EE2026", "EE2028"} and allocation.course_code == choice:
                 failures.append(allocation.course_code)
             else:
@@ -346,6 +354,95 @@ def _evaluate_te_sep_rules(
     return results
 
 
+def _evaluate_sep_residency_rules(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
+    residency_constraint = _constraint(config, "SEP_RESIDENCY_50")
+    programme_constraint = _constraint(config, "SEP_PROGRAMME_60")
+    overall_total = sum(course.units for course in courses if _counts_for_sep_residency(course))
+    overall_nus = sum(course.units for course in courses if course.source == CourseSource.nus)
+    overall_ratio = (overall_nus / overall_total) if overall_total else 1.0
+
+    programme_units_by_course: dict[str, tuple[int, CourseAttempt | None]] = {}
+    for allocation in allocations:
+        if not _counts_for_programme_residency(allocation):
+            continue
+        attempt = _attempt_for_allocation(config, courses, allocation)
+        key = attempt.course_code if attempt is not None else allocation.course_code
+        current_units = programme_units_by_course.get(key, (0, None))[0]
+        if allocation.units > current_units:
+            programme_units_by_course[key] = (allocation.units, attempt)
+    programme_total = sum(units for units, _ in programme_units_by_course.values())
+    programme_nus = sum(
+        units
+        for units, attempt in programme_units_by_course.values()
+        if attempt is not None and attempt.source == CourseSource.nus
+    )
+    programme_ratio = (programme_nus / programme_total) if programme_total else 1.0
+
+    return [
+        _result(
+            residency_constraint,
+            overall_ratio >= 0.5,
+            _ratio_message("NUS residency", overall_nus, overall_total, overall_ratio, 50),
+            affected_courses=[] if overall_ratio >= 0.5 else _sep_course_codes(courses),
+        ),
+        _result(
+            programme_constraint,
+            programme_ratio >= 0.6,
+            _ratio_message("Programme residency", programme_nus, programme_total, programme_ratio, 60),
+            affected_courses=[] if programme_ratio >= 0.6 else _sep_allocated_course_codes(config, courses, allocations),
+        ),
+    ]
+
+
+def _evaluate_sep_to_tc_rule(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
+    constraint = _constraint(config, "SEP_MAY_MAP_TC")
+    sep_tc_allocations: list[tuple[Allocation, CourseAttempt]] = []
+    failures: list[str] = []
+    for allocation in allocations:
+        if allocation.requirement_id != TC_REQUIREMENT_ID or allocation.allocation_role == "ignored":
+            continue
+        attempt = _attempt_for_allocation(config, courses, allocation)
+        if attempt is None or attempt.source != CourseSource.sep:
+            continue
+        if attempt.approval_status != ApprovalStatus.approved:
+            failures.append(attempt.course_code)
+            continue
+        effective_code = canonical_code(config, attempt.effective_code)
+        if not is_tc_eligible(config, effective_code, allocations):
+            failures.append(attempt.course_code)
+            continue
+        sep_tc_allocations.append((allocation, attempt))
+
+    if failures:
+        return [
+            _result(
+                constraint,
+                False,
+                "SEP courses mapped to TC must be approved and map to the closed TC pool.",
+                affected_courses=sorted(set(failures)),
+            )
+        ]
+    if not sep_tc_allocations:
+        return [_result(constraint, True, "No SEP course is mapped to TC.")]
+    mapped = sorted({attempt.course_code for _, attempt in sep_tc_allocations})
+    return [
+        _result(
+            constraint,
+            True,
+            "; ".join(f"SEP course {course_code} mapped to TC (allowed for AY23/AY24 intakes)" for course_code in mapped),
+            affected_courses=mapped,
+        )
+    ]
+
+
 def _attempt_for_allocation(
     config: DegreeAuditConfig,
     courses: list[CourseAttempt],
@@ -359,6 +456,46 @@ def _attempt_for_allocation(
         if allocation_code == canonical_code(config, course.effective_code):
             return course
     return None
+
+
+def _counts_for_sep_residency(course: CourseAttempt) -> bool:
+    return course.source in {CourseSource.nus, CourseSource.sep}
+
+
+def _counts_for_programme_residency(allocation: Allocation) -> bool:
+    return (
+        allocation.allocation_role != "ignored"
+        and allocation.allocation_role != "residual_ue"
+        and allocation.requirement_id not in {UE_RESIDUAL_REQUIREMENT_ID, "EE24JC_UE"}
+    )
+
+
+def _ratio_message(label: str, nus_units: int, total_units: int, ratio: float, minimum_percent: int) -> str:
+    percent = round(ratio * 100)
+    if ratio >= minimum_percent / 100:
+        return f"{label} is {percent}% ({nus_units}/{total_units} units), meeting the {minimum_percent}% minimum."
+    if label == "NUS residency":
+        return f"NUS residency below {minimum_percent}% of overall courses: {percent}% ({nus_units}/{total_units} units)."
+    return f"{label} below {minimum_percent}% of programme requirements: {percent}% ({nus_units}/{total_units} units)."
+
+
+def _sep_course_codes(courses: list[CourseAttempt]) -> list[str]:
+    return sorted(course.course_code for course in courses if course.source == CourseSource.sep)
+
+
+def _sep_allocated_course_codes(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[str]:
+    codes: set[str] = set()
+    for allocation in allocations:
+        if not _counts_for_programme_residency(allocation):
+            continue
+        attempt = _attempt_for_allocation(config, courses, allocation)
+        if attempt is not None and attempt.source == CourseSource.sep:
+            codes.add(attempt.course_code)
+    return sorted(codes)
 
 
 def _effective_code_for_allocation(

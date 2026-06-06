@@ -56,8 +56,6 @@ UNSUPPORTED_CASES = {
     "config_merge_identical_ok": "review fixture expects scoped config pass; current audit contract reports whole-audit pass",
     "source_ref_preserved_on_failure": "source-ref edge fixture expects scoped TC reporting",
     "tc_closed_list_reject_fail": "closed TC pool ineligible-allocation constraint is not implemented",
-    "sep_mapped_to_tc_pass": "SEP-mapped TC acceptance is not implemented",
-    "sep_residency_below_50_fail": "SEP residency rule is not implemented",
     "order_independence_check": "review fixture expects scoped major pass; current contract reports whole-audit pass",
 }
 
