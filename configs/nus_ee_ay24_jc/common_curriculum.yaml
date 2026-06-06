@@ -1,6 +1,41 @@
+course_pools:
+  - id: CC_GE_GESS_POOL
+    description: Singapore Studies GE pillar courses.
+    includes: [GESSxxxx]
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Singapore Studies GESS
+  - id: CC_GE_GEC_POOL
+    description: Cultures and Connections GE pillar courses.
+    includes: [GECxxxx]
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Cultures and Connections GEC
+  - id: CC_GE_GEN_POOL
+    description: Communities and Engagement GE pillar courses.
+    includes: [GENxxxx]
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Communities and Engagement GEN
+
 requirements:
+  - id: DEG_TOTAL_160
+    description: Total degree requirement for B.Eng. Electrical Engineering.
+    requirement_type: all_of
+    units: 160
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 2
+      section: Degree Requirements
+      quote: TOTAL 160 units
   - id: CDE_COMMON_CURRICULUM
-    description: CDE Common Curriculum placeholder for AY2024 JC/non-poly EE intake.
+    description: CDE Common Curriculum for AY2024 JC/non-poly EE intake.
     requirement_type: all_of
     units: 60
     source_ref:
@@ -8,18 +43,280 @@ requirements:
       page: 1
       section: Common Curriculum
       quote: Common Curriculum CDE 60 units
-      notes: Pass 3 models this structurally only; Common Curriculum satisfaction is not evaluated yet.
-  - id: CDE_CAPSTONE
-    description: Common Curriculum capstone placeholder for EE4002D or EE4002R.
+  - id: UE_40
+    description: Unrestricted Electives residual capacity.
+    requirement_type: pool_count
+    units: 40
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 2
+      section: Degree Requirements
+      quote: Unrestricted Electives 40 units
+  - id: MAJOR_60
+    description: EE Major requirement total.
+    requirement_type: all_of
+    units: 60
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 2
+      section: Degree Requirements
+      quote: Major Requirements 60 units
+  - id: CC_GE_GESS
+    description: Singapore Studies pillar.
+    requirement_type: pool_count
+    pool_id: CC_GE_GESS_POOL
+    units: 4
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Singapore Studies GESS
+      notes: CDE2501 may satisfy this pillar only under the no-GESS branch.
+  - id: CC_GE_GEC
+    description: Cultures and Connections pillar.
+    requirement_type: pool_count
+    pool_id: CC_GE_GEC_POOL
+    units: 4
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Cultures and Connections GEC
+  - id: CC_GE_GEN
+    description: Communities and Engagement pillar.
+    requirement_type: pool_count
+    pool_id: CC_GE_GEN_POOL
+    units: 4
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Communities and Engagement GEN
+  - id: CC_GE_ES2631
+    description: Critique and Expression pillar.
+    requirement_type: course_list
+    courses: [ES2631]
+    units: 4
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Critique and Expression ES2631
+  - id: CC_GE_CS1010E
+    description: Digital Literacy pillar.
+    requirement_type: course_list
+    courses: [CS1010E]
+    units: 4
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Digital Literacy CS1010E
+  - id: CC_GE_GEA1000
+    description: Data Literacy pillar.
+    requirement_type: course_list
+    courses: [GEA1000]
+    units: 4
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Data Literacy GEA1000
+  - id: CC_ISK_DTK1234
+    description: Design Thinking pillar.
+    requirement_type: course_list
+    courses: [DTK1234]
+    units: 4
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Design Thinking DTK1234
+  - id: CC_ISK_MAKER
+    description: Maker Space pillar.
+    requirement_type: choice
+    courses: [EG1311, EG1311BE]
+    units: 4
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Maker Space EG1311 / EG1311BE
+  - id: CC_ISK_ST
+    description: Systems Thinking pillar, IE2141 or TC in lieu.
+    requirement_type: choice
+    courses: [IE2141]
+    units: 4
+    source_ref:
+      document: EE2_Revised Grad Req Briefing_20June25.pdf
+      page: 4
+      section: Systems Thinking
+      quote: read an additional technical course to satisfy the Systems Thinking pillar in lieu of IE2141
+  - id: CC_ISK_AI
+    description: Artificial Intelligence pillar.
+    requirement_type: course_list
+    courses: [EE2211]
+    units: 4
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Artificial Intelligence EE2211
+  - id: CC_ISK_SF
+    description: Sustainable Futures pillar, CDE2501 or conditional TC in lieu.
+    requirement_type: choice
+    courses: [CDE2501]
+    units: 4
+    source_ref:
+      document: EE2_Revised Grad Req Briefing_20June25.pdf
+      page: 10
+      section: Sustainable Futures
+      quote: If you have not taken a GESS course, CDE2501 will be count towards the Singapore Studies pillar. You may read 1 TC in lieu of Sustainable Futures
+  - id: CC_ISK_CN
+    description: Creating Narratives pillar, CDE2000 or TC in lieu.
+    requirement_type: choice
+    courses: [CDE2000]
+    units: 4
+    source_ref:
+      document: EE2_Revised Grad Req Briefing_20June25.pdf
+      page: 4
+      section: Creating Narratives
+      quote: read an additional technical course in lieu
+  - id: CC_ISK_PM
+    description: Project Management pillar.
+    requirement_type: course_list
+    courses: [PF1101]
+    units: 4
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Project Management PF1101
+  - id: CC_CAPSTONE
+    description: Integrated Project / Common Curriculum capstone.
     requirement_type: project_option
-    courses:
-      - EE4002D
-      - EE4002R
+    courses: [EE4002D, EE4002R, CDE4301]
+    units: 8
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Integrated Project EE4002D/R or CDE4301
+  - id: CC_ISK_CAPSTONE
+    description: Interdisciplinary Skills Integrated Project alias for Common Curriculum capstone.
+    requirement_type: project_option
+    courses: [EE4002D, EE4002R, CDE4301]
+    units: 8
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Integrated Project EE4002D/R or CDE4301
+  - id: CDE_CAPSTONE
+    description: Legacy internal Common Curriculum capstone allocation slot.
+    requirement_type: project_option
+    courses: [EE4002D, EE4002R]
     units: 8
     source_ref:
       document: ECE_Specialisations_AY2025_7July2025.pdf
       page: 1
       section: Double-counting of Specialisation and EE Major requirement
       quote: EE4002D/R (8 Units)
-      notes: Capstone double-counting rules are intentionally deferred to a later pass.
 
+constraints:
+  - id: DEG_TOTAL_160
+    description: Degree total is 160 units without TC-in-lieu inflation.
+    constraint_type: degree_total
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 2
+      section: Degree Requirements
+      quote: TOTAL 160 units
+  - id: CC_CDE_60
+    description: CDE Common Curriculum totals 60 units.
+    constraint_type: cc_total
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 1
+      section: Common Curriculum
+      quote: Common Curriculum CDE 60 units
+  - id: UE_40
+    description: Unrestricted Electives total 40 units.
+    constraint_type: ue_total
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 2
+      section: Degree Requirements
+      quote: Unrestricted Electives 40 units
+  - id: MAJOR_60
+    description: EE Major totals 60 units.
+    constraint_type: major_total
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 2
+      section: Degree Requirements
+      quote: Major Requirements 60 units
+  - id: CC_CDE2501_DUAL_ROLE
+    description: CDE2501 occupies exactly one of Singapore Studies or Sustainable Futures.
+    constraint_type: cde2501_dual_role
+    source_ref:
+      document: FAQ for In-Flight students_For AY24 Non Poly_17Jun2025.pdf
+      page: 2
+      section: CDE2501
+      quote: CDE2501 remains a compulsory course and may be counted under the relevant pillar.
+  - id: CC_TC_IN_LIEU_ST
+    description: Systems Thinking is satisfied by IE2141 or one TC in lieu, not both.
+    constraint_type: cc_tc_in_lieu_st
+    source_ref:
+      document: EE2_Revised Grad Req Briefing_20June25.pdf
+      page: 4
+      section: Systems Thinking
+      quote: If you have not already read IE2141, you can read an additional technical course to satisfy the Systems Thinking pillar in lieu of IE2141
+  - id: CC_TC_IN_LIEU_CN
+    description: Creating Narratives is satisfied by CDE2000 or one TC in lieu, not both.
+    constraint_type: cc_tc_in_lieu_cn
+    source_ref:
+      document: FAQ for In-Flight students_For AY24 Non Poly_17Jun2025.pdf
+      page: 1
+      section: Common Curriculum substitution
+      quote: TC may be read in lieu of a CDE Common Curriculum pillar when the listed course has not been taken.
+  - id: CC_TC_IN_LIEU_SF
+    description: Sustainable Futures may use a TC only when CDE2501 is redirected to Singapore Studies.
+    constraint_type: cc_tc_in_lieu_sf
+    source_ref:
+      document: EE2_Revised Grad Req Briefing_20June25.pdf
+      page: 10
+      section: Sustainable Futures
+      quote: If you have not taken a GESS course, CDE2501 will be count towards the Singapore Studies pillar. You may read 1 TC in lieu of Sustainable Futures
+  - id: CC_TC_OVERFLOW_TO_UE
+    description: TC substitutions are unit-neutral and overflow to UE when not absorbed by a CC pillar.
+    constraint_type: cc_tc_overflow_to_ue
+    source_ref:
+      document: EE2_Curriculum_Talk_2025_13Aug2025.pdf
+      page: 7
+      section: TC and UE accounting
+      quote: TC substitutions do not increase the 160-unit degree total.
+  - id: CC_RC_EXCLUSION
+    description: Standard TC-in-lieu substitution table does not apply to RC/college/poly students.
+    constraint_type: cc_rc_exclusion
+    source_ref:
+      document: FAQ for In-Flight students_For AY24 Non Poly_17Jun2025.pdf
+      page: 1
+      section: Common Curriculum substitution
+      quote: The below table is not applicable to students in RC4/UTCP/NUSC/RVRC/Poly graduates.
+  - id: PILLAR_OVER_ALLOCATED
+    description: A Common Curriculum pillar cannot be satisfied by both its default course and a TC-in-lieu.
+    constraint_type: pillar_over_allocated
+    source_ref:
+      document: EE2_Revised Grad Req Briefing_20June25.pdf
+      page: 4
+      section: Common Curriculum substitution
+      quote: If you have not already read IE2141, you can read an additional technical course in lieu.
+  - id: DOUBLE_USE_SINGLE_INSTANCE
+    description: A single course instance cannot satisfy two incompatible Common Curriculum pillars.
+    constraint_type: double_use_single_instance
+    source_ref:
+      document: FAQ for In-Flight students_For AY24 Non Poly_17Jun2025.pdf
+      page: 2
+      section: CDE2501
+      quote: CDE2501 remains a compulsory course and is counted under one pillar.

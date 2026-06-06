@@ -10,6 +10,7 @@ from degree_auditor.eligibility import (
     canonical_course_code,
     course_in_pool,
     eligible_requirement_ids,
+    is_tc_eligible,
 )
 from degree_auditor.models import Allocation, CourseAttempt, DegreeAuditConfig, Requirement
 
@@ -60,6 +61,10 @@ def _requirement_matches(
     topic_tags: set[str],
 ) -> bool:
     requirement_courses = {course.upper().strip() for course in requirement.courses}
+    if requirement.id == "CC_GE_GESS" and course_code == "CDE2501":
+        return True
+    if requirement.id in {"CC_ISK_ST", "CC_ISK_CN", "CC_ISK_SF"} and is_tc_eligible(config, course_code, []):
+        return True
     if requirement.requirement_type in {"course_list", "all_of", "choice"}:
         return course_code in requirement_courses
 
