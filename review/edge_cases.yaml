@@ -1,21 +1,138 @@
-# Edge cases — NUS EE AY24 JC degree auditor (implementation-blind)
+# Edge cases — NUS EE AY24 JC degree auditor (implementation-blind contract fixtures)
 #
-# Schema per test case:
-#   id, description, why_this_matters, transcript, manual_allocation (optional),
-#   expected_pass, expected_failed_requirements, expected_failed_constraints,
-#   expected_warnings, source_refs
-#
-# Conventions:
-#   - assert_focus names the rule/area the expected_pass refers to (fixtures are
-#     intentionally minimal, so expected_pass is scoped to that area unless noted
-#     as a full-degree transcript).
-#   - All courses are 4 units unless stated. Units shown where they matter.
-#   - source_refs: CHK = L_AY24JC_Checklist PDF, SPC = ECE_Specialisations PDF,
-#     PRM = prompt.txt.
-#   - "page" refers to printed page markers in each PDF.
+# This file is the source of truth for the first black-box test pass. It is consumed by a
+# harness (see review/black_box_test_plan.md §2) that runs the CLI and compares its JSON
+# output against each case. The maintainer must make the CLI emit the IDs/fields defined in
+# `meta` below. The authoritative rule/constraint definitions live in review/rule_inventory.md;
+# this file only adds enums, the slot<->requirement mapping, and assertion semantics.
 
-version: 1
-cohort: nus_ee_ay24_jc
+meta:
+  schema_version: 2
+  cohort: nus_ee_ay24_jc
+  authoritative_registry: review/rule_inventory.md
+  contract: "prompt.txt -> '## Contract & Assumptions (for the maintainer)'"
+
+  # ---- Per-case schema (every case MUST have exactly these keys) ----
+  case_schema:
+    required: [id, description, why_this_matters, assert_focus, transcript,
+               expected_pass, expected_failed_requirements, expected_failed_constraints,
+               expected_warnings, source_refs]
+    optional: [manual_allocation, config_overlay]
+  field_docs:
+    id: "unique snake_case identifier; also the pytest param id"
+    assert_focus: "documentation only — names the rule/area expected_pass refers to; NOT asserted"
+    transcript: "{ courses: [CourseAttempt], student_flags?: [Flag] }"
+    manual_allocation: "{ allocations: [Allocation] } — when present, overrides greedy"
+    config_overlay: "list of synthetic config fragments for merge tests only"
+    expected_pass: "bool — pass/fail of the assert_focus area (fixtures are minimal; see scoping)"
+    expected_failed_requirements: "list[RequirementId] — assertion is SUBSET (see assertion_semantics)"
+    expected_failed_constraints: "list[ConstraintId] — assertion is SUBSET"
+    expected_warnings: "list[str] — each entry must be a SUBSTRING of some emitted warning"
+    source_refs: "list[{document, page|line|null, quote}] — provenance, not asserted"
+
+  # ---- Enumerations (closed sets) ----
+  enums:
+    course_status: [completed, in_progress, planned]
+    course_source: [NUS, SEP, APC, EXEMPTION, MANUAL]
+    allocation_role: [primary, double_count, residual_ue, ignored]
+    student_flag: [IDP, POLY, RC4, UTCP, NUSC, RVRC]
+
+  # ---- Defaults applied when a field is omitted on a CourseAttempt ----
+  defaults:
+    units: 4
+    status: completed
+    source: NUS
+    su: false
+    topic_tags: []
+    approved_for: []
+
+  # ---- Assertion semantics (how the harness decides pass/fail) ----
+  assertion_semantics:
+    expected_pass: "compare to result.pass for the audited scope"
+    failed_requirements: "set(expected_failed_requirements) <= set(result.failed_requirements)"
+    failed_constraints: "set(expected_failed_constraints) <= set(result.failed_constraints)"
+    warnings: "for each w in expected_warnings: any(w in m for m in result.warnings)"
+    note: >
+      Subset (not equality) so minimal fixtures need not enumerate every incidental failure.
+      A case with empty expected_failed_* asserts only expected_pass + warnings.
+
+  # ---- Allocation-target (slot) id  <->  reported requirement id ----
+  # allocation.requirement_id uses the slot_id column; expected_failed_requirements uses the
+  # requirement_id column. Where equal, the code may treat them as one id.
+  slot_to_requirement:
+    EE24JC_TC: TC_MIN_3
+    EE24JC_TE: TE_MIN_2
+    EE24JC_UE: UE_40
+    EE24JC_MAJOR_DIGITAL: MAJ_DIGITAL_CHOICE
+    EE24JC_MAJOR_EE2027: MAJ_EE2027
+    MAJOR_INTERNSHIP: MAJOR_INTERNSHIP_10
+    AE_CORE: AE_CORE
+    AE_ELECTIVE: AE_ELECTIVES_MIN_3
+    IND4_CORE: IND4_CORE
+    IOT_CORE: IOT_CORE
+    IOT_ELECTIVE: IOT_ELECTIVES_MIN_2_OR_8U
+    MQM_CORE: MQM_CORE
+    MQM_ELECTIVE: MQM_ELECTIVES_MIN_3_OR_12U
+    RBT_BASKET: RBT_PATH1_CAPSTONE   # basket courses feed BOTH RBT_PATH1_CAPSTONE and RBT_PATH2_COURSEWORK
+    RBT_CAPSTONE: RBT_PATH1_CAPSTONE  # capstone component of Path 1
+    SET_ELECTIVE: SET_ELECTIVES_MIN_2
+    SPT_CORE: SPT_CORE
+    SPT_ELECTIVE: SPT_ELECTIVES_MIN_2
+    CC_CAPSTONE: CC_CAPSTONE
+    CC_GE_GESS: CC_GE_GESS
+    CC_ISK_ST: CC_ISK_ST
+    CC_ISK_CN: CC_ISK_CN
+    CC_ISK_SF: CC_ISK_SF
+    IDP_2ND_MAJOR: IDP_2ND_MAJOR     # out of scope; present only for CDE4301 conflict test
+
+  # Reported requirement ids that have NO allocation slot (evaluated, not allocated-to):
+  reported_only_requirements:
+    - RBT_PATH2_COURSEWORK   # Robotics coursework-only path; fed by the RBT_BASKET slot
+    - DEG_TOTAL_160
+    - CC_CDE_60
+    - MAJOR_60
+
+  # ---- Constraint ids exercised by these cases (full definitions in rule_inventory.md) ----
+  constraint_ids_used:
+    - ALIAS_DUPLICATE_CREDIT
+    - CAP_LOCK
+    - CC_RC_EXCLUSION
+    - CDE4301_NO_SPEC_IF_IDP
+    - CONFIG_MERGE_CONFLICT
+    - DOUBLE_USE_SINGLE_INSTANCE
+    - LVL1000_MAX_60
+    - MAJOR_INTERNSHIP_CEG_ONLY
+    - MAJOR_INTERNSHIP_UROP_CAP
+    - MANUAL_ALLOC_INELIGIBLE
+    - MANUAL_ALLOC_INVALID
+    - PILLAR_OVER_ALLOCATED
+    - SEP_CAPSTONE_FORBIDS_SEP
+    - SEP_RESIDENCY_50
+    - SEP_SPEC_MAX_8
+    - SEP_SPEC_NO_REUSE
+    - SEP_TE_MAX_ONE_MAPPED
+    - SEP_TE_ONE_NUS
+    - SPEC_MAX_OVERLAP_8
+    - SPEC_OVERLAP_SINGLE_INSTANCE
+    - SPT_EG4301_NOT_COUNTED
+    - TC_EFFECTIVE_DATE_EE3033
+    - TC_NOT_TE
+    - TE_EXCLUDE_EE3031
+    - TE_EXCLUDE_EE3033
+    - TE_EXCLUDE_NON_EE
+
+  source_ref_documents:
+    CHK: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+    SPC: ECE_Specialisations_AY2025_7July2025.pdf
+    PRM: prompt.txt
+    TCL: Electrical-Engineering-List-of-Additional-Technical-Courses-v3.pdf
+    FAQ: FAQ for In-Flight students_For AY24 Non Poly_17Jun2025.pdf
+    GRB: EE2_Revised Grad Req Briefing_20June25.pdf
+    CTK: EE2_Curriculum_Talk_2025_13Aug2025.pdf
+    TE26: EE_TechElectives_AY2026_iii.pdf
+    SEP: ECE_SEP_Outgoing_AY2627_30Jan26.pdf
+    IAW: "https://cde.nus.edu.sg/undergraduate/engineering-internships/student-info/"
+    review: review/*.md
 
 cases:
   - id: major_core_pass_basic

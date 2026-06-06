@@ -883,3 +883,128 @@ Use type hints throughout.
 Include comments only where they explain curriculum-specific logic.
 
 When a PDF rule is ambiguous, create a TODO note and a failing or xfail test if appropriate, rather than hiding the ambiguity.
+
+## Contract & Assumptions (for the maintainer)
+
+This chapter is an interface contract. It exists so the CLI can be black-box tested against
+`review/edge_cases.yaml` without reading the implementation. If the current code diverges from
+this contract, change the **code interface** to match this contract (the review artifacts are
+the source of truth for the first test pass). Treat every MUST as a hard requirement.
+
+### C0. Authoritative artifacts
+- Rule/constraint definitions + IDs: `review/rule_inventory.md`.
+- Resolved ambiguities/defaults: `review/ambiguous_rules.md` (resolution table) + `review/ambiguous_human_review.md`.
+- Test fixtures + enums + registries + assertion semantics: `review/edge_cases.yaml › meta`.
+- Invariants: `review/metamorphic_properties.md`. Test method: `review/black_box_test_plan.md`.
+
+### C1. CLI command contract
+The package MUST expose a console script `degree-auditor` (and `python -m degree_auditor`) with:
+
+- `validate-config --config <path...>` — load + merge config(s); exit 0 if valid.
+- `list-requirements --config <path...>` — print every requirement id + description + source_ref.
+- `list-constraints --config <path...>` — print every constraint id + description + source_ref.
+- `list-specialisations --config <path...>` — print the 7 specialisation ids.
+- `expand-eligibility --config <path...> --transcript <f>` — per-course eligible requirement ids.
+- `plan-allocation --config <path...> --transcript <f> --out <f>` — write greedy allocation YAML.
+- `audit --config <path...> --transcript <f> [--allocation <f>] [--format text|json|yaml]` — audit.
+
+Rules:
+- `--config` MAY be repeated; multiple paths are merged (see C7). `--format` defaults to `text`.
+- Output is deterministic (no timestamps/randomness in the asserted fields).
+
+### C2. Exit codes (audit)
+- `0` — audit completed and `result.pass == true`.
+- `2` — audit completed and `result.pass == false` (requirements/constraints failed).
+- `1` — invalid input: transcript/allocation/config parse error, config merge conflict,
+  or invalid manual allocation (unknown course, units overflow, ineligible target).
+Other commands: `0` on success, `1` on invalid input/config.
+
+### C3. JSON output schema (`audit --format json`)
+MUST be valid JSON with at least these keys (see `black_box_test_plan.md` §2.3 for a full sample):
+`pass` (bool), `cohort` (str), `total_units` (int), `requirements` (list of
+`{id, status, units_done, units_required, satisfied_by, source_ref}`),
+`failed_requirements` (list[str]), `constraints` (list of `{id, status, message, source_ref}`),
+`failed_constraints` (list[str]), `warnings` (list[str]), `specialisations` (list of
+`{id, status, overlap_used, overlap_budget, distinct_units, sep_mapped_units, capstone_lock}`),
+`allocations` (list of `{course_code, requirement_id, units, allocation_role, manual}`).
+- `status` ∈ `{PASS, FAIL, PARTIAL, NOT_ATTEMPTED}`.
+- `failed_requirements` = ids of requirements with status FAIL; `failed_constraints` likewise.
+- Every `source_ref` is `{document, page|line|null, section?, quote?, notes?}` and MUST be
+  preserved from config through to output (PRM source-ref policy).
+
+### C4. Transcript YAML schema
+```yaml
+student_flags: [IDP]            # optional; enum: IDP|POLY|RC4|UTCP|NUSC|RVRC
+courses:
+  - course_code: EE3331C        # required
+    units: 4                    # default 4
+    title: ...                  # optional
+    term: AY2025-2026 S2        # optional; required to evaluate TC_EFFECTIVE_DATE_EE3033
+    grade: A-                   # optional (CS/CU for internships)
+    su: false                   # default false
+    status: completed           # default completed; enum completed|in_progress|planned
+    source: NUS                 # default NUS; enum NUS|SEP|APC|EXEMPTION|MANUAL
+    mapped_to: EE4308           # optional (SEP)
+    topic_tags: [robotics]      # default []
+    approved_for: [EE_TE]       # default []
+```
+The CLI MUST apply the listed defaults when a field is omitted.
+
+### C5. Manual allocation YAML schema
+```yaml
+allocations:
+  - course_code: EE3331C
+    requirement_id: TC_MIN_3    # MUST be an allocation-target id (C6)
+    units: 4
+    allocation_role: primary    # enum primary|double_count|residual_ue|ignored
+    manual: true
+    notes: null
+```
+Manual allocation overrides greedy but constraints are still evaluated. Invalid allocations
+(unknown course, units > attempt units, ineligible target) MUST yield exit 1 and a failed
+constraint `MANUAL_ALLOC_INVALID` or `MANUAL_ALLOC_INELIGIBLE`.
+
+### C6. ID registries (the alignment crux)
+There are two coordinated namespaces; the CLI MUST honour both exactly:
+- **Allocation-target (slot) ids** — valid values for `allocation.requirement_id`.
+- **Reported requirement ids** — values that appear in `failed_requirements`.
+The mapping is `review/edge_cases.yaml › meta.slot_to_requirement` (e.g. slot `EE24JC_TC` →
+requirement `TC_MIN_3`; slot `AE_ELECTIVE` → requirement `AE_ELECTIVES_MIN_3`). Where a slot id
+equals its requirement id, treat them as one. The CLI MUST: accept slot ids in allocations, and
+emit reported requirement ids in results. All constraint ids emitted MUST come from the
+`rule_inventory.md` constraint registry (the subset exercised by tests is
+`meta.constraint_ids_used`).
+
+### C7. Config merge semantics
+Merge requirements/pools/constraints/specialisations by `id`. Identical → accept; conflicting →
+exit 1 with an error naming the id and mentioning `override: true` (which, when set, lets the
+later value win deterministically). Pool `includes`/`excludes` are unioned. Source-refs retained.
+
+### C8. Allocation roles, overlap, UE
+- Roles: `primary`, `double_count`, `residual_ue`, `ignored`.
+- A specialisation overlap is consumed only when a course is allocated to the specialisation AND
+  to another explicit NON-UE requirement. `residual_ue` never creates overlap.
+- Capstone lock: an EE4002D/R double-counted CC↔spec sets `overlap_used = overlap_budget = 8`
+  and forbids any further double-count for that spec (`CAP_LOCK`).
+
+### C9. Locked assumptions/defaults (resolved — do not re-litigate)
+- TC pool is a CLOSED list; 3 TC = 12 units; SEP may map to TC for AY23/AY24.
+- Non-EE courses (MExxxx/CSxxxxDE/RBxxxx) cannot satisfy the TE rule (UE only); alias resolution
+  grants Specialisation/UE eligibility only, never TE eligibility.
+- For AY2024 intake, CG3207/EE3105/EE3305/EE3306/EE3703/EE3801 ARE valid TEs.
+- "Emerging Technologies" EE4032/EE4205 are NOT specialisation electives.
+- CDE2501 always compulsory, occupies exactly one pillar (SS or SF); 3 TCs are unit-neutral.
+- Major internship = 10 units; UROP/UREx ≤ 4 units to major; up to 20 internship units total,
+  overflow → UE; CP3880/CP3200/CP3202 are CEG-only; EG2605 ≡ CDE2605/CDE2605R.
+- Level-1000 cap (60u) and internship-combo are enforced; S/U is out of scope.
+- Items still on a recommended default (may be flipped with documentation): A-02 (count+units),
+  A-04 (EE3033 term gate), A-10 (ME3142 review), A-15 (MQM host MSE).
+
+### C10. Maintainer acceptance checklist
+The first black-box pass is "ready" when:
+1. `audit --format json` emits all C3 keys with the C6 ids and preserved source_refs.
+2. Exit codes follow C2.
+3. The pre-flight contract check (`black_box_test_plan.md` §2.6) passes.
+4. Defaults (C4) and enums (`meta.enums`) are applied/accepted as specified.
+5. Manual-allocation validation produces the C5 failed constraints (not silent drops).
+6. Running the harness over `edge_cases.yaml` yields only intended, documented diffs.

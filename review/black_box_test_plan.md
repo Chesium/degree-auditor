@@ -26,32 +26,88 @@ From PRM 549–586, the CLI exposes:
 | `audit --config <dir> --transcript <f> [--allocation <f>] [--format text\|json\|yaml]` | report + exit code |
 
 The three observable channels we assert on:
-1. **Exit code** (0 = pass/valid, non-zero = fail/invalid — to be confirmed; see §7).
-2. **Structured output** (`--format json`) — the machine-readable contract.
+1. **Exit code** — `audit` returns `0` iff `result.pass == true`; `2` for a non-passing audit;
+   `1` for invalid input/config (parse error, merge conflict, invalid manual allocation). See
+   the Contract chapter in `prompt.txt`.
+2. **Structured output** (`--format json`) — the machine-readable contract (schema below).
 3. **Human report** (`--format text`, Rich) — checked via snapshot + substring assertions.
+
+> **Alignment note (read first).** This plan no longer "discovers" whatever IDs the code emits.
+> The authoritative interface is the **Contract & Assumptions** chapter appended to `prompt.txt`,
+> and the registries/enums in `edge_cases.yaml › meta`. The maintainer aligns the CLI to that
+> contract; the harness asserts against it verbatim. Any divergence is a code defect, not a
+> mapping exercise.
 
 ---
 
 ## 2. Test harness design (no source access)
 
-- **Driver:** invoke the installed console script (`degree-auditor ...`) or
-  `python -m degree_auditor` via `subprocess.run`, capturing stdout, stderr, returncode.
-- **Fixtures:** each case in `edge_cases.yaml` is materialised into:
-  - `tmp/<id>/transcript.yaml`
-  - `tmp/<id>/manual_allocation.yaml` (when `manual_allocation` present)
-  - `tmp/<id>/overlay/*.yaml` (when `config_overlay` present)
-- **Oracle:** prefer `--format json` and assert on parsed fields:
-  - `result.pass`
-  - `result.failed_requirements` (set of IDs) ⊇ `expected_failed_requirements`
-  - `result.failed_constraints` (set of IDs) ⊇ `expected_failed_constraints`
-  - each `expected_warnings` substring appears in some warning message
-- **Snapshotting:** for `text` format, store a normalised snapshot (strip ANSI, trailing
-  whitespace, volatile timestamps) per case; diff on re-run (supports MP-15).
+### 2.1 Driver
+- Invoke the console script `degree-auditor …` (or `python -m degree_auditor …`) via
+  `subprocess.run`, capturing `stdout`, `stderr`, `returncode`.
+- Always request `--format json` for assertions; capture `text` separately for snapshots.
 
-A small adapter maps our review IDs (e.g. `TC_NOT_TE`) to whatever IDs the implementation
-emits. Because we are blind, the adapter is built once by running representative cases and
-recording the emitted IDs, then frozen. Mismatches between our expected semantic and the
-emitted ID are reported as findings, not silently remapped.
+### 2.2 Fixture materialisation
+For each case in `edge_cases.yaml`, apply `meta.defaults` to every `CourseAttempt`, then write:
+- `tmp/<id>/transcript.yaml`  ← `transcript` (+ `student_flags`)
+- `tmp/<id>/manual_allocation.yaml`  ← `manual_allocation` (only if present)
+- `tmp/<id>/overlay/*.yaml`  ← `config_overlay` fragments (merge tests only)
+
+### 2.3 Required JSON output schema (the oracle)
+`audit --format json` MUST emit at least:
+
+```json
+{
+  "pass": false,
+  "cohort": "nus_ee_ay24_jc",
+  "total_units": 160,
+  "requirements": [
+    {"id": "TC_MIN_3", "status": "FAIL", "units_done": 8, "units_required": 12,
+     "satisfied_by": ["EE3408C","EE3331C"], "source_ref": {"document":"CHK","page":1}}
+  ],
+  "failed_requirements": ["TC_MIN_3"],
+  "constraints": [
+    {"id": "TC_NOT_TE", "status": "FAIL", "message": "EE3331C used for both TC and TE",
+     "source_ref": {"document":"CHK","page":3}}
+  ],
+  "failed_constraints": ["TC_NOT_TE"],
+  "warnings": ["EE3331C allocated to both TC and TE; mutual exclusion violated"],
+  "specialisations": [
+    {"id":"RBT","status":"PARTIAL","overlap_used":8,"overlap_budget":8,
+     "distinct_units":12,"sep_mapped_units":0,"capstone_lock":true}
+  ],
+  "allocations": [
+    {"course_code":"EE3331C","requirement_id":"TC_MIN_3","units":4,
+     "allocation_role":"primary","manual":true}
+  ]
+}
+```
+
+`failed_requirements` / `failed_constraints` are flat ID arrays derived from the detailed
+objects; the harness asserts on those arrays. IDs MUST be drawn from `rule_inventory.md`
+(reported `requirement_id`) and the `constraint_ids` registry.
+
+### 2.4 Assertion contract (exact, from `edge_cases.yaml › meta.assertion_semantics`)
+For each case:
+- `result.pass == expected_pass`
+- `set(expected_failed_requirements) ⊆ set(result.failed_requirements)`
+- `set(expected_failed_constraints) ⊆ set(result.failed_constraints)`
+- `∀ w ∈ expected_warnings: ∃ m ∈ result.warnings with w ⊆ m` (substring)
+- `assert_focus`, `source_refs`, `why_this_matters` are **documentation only** (never asserted).
+
+Subset (not equality) lets minimal fixtures omit incidental failures. A case with empty
+`expected_failed_*` asserts only `expected_pass` + warnings.
+
+### 2.5 Snapshotting
+For `text` format, store a normalised snapshot (strip ANSI, trailing whitespace, volatile
+timestamps) per case; diff on re-run (supports MP-15 determinism).
+
+### 2.6 Pre-flight contract check (run before any layer)
+A guard test asserts the CLI's emitted vocabulary matches the contract, failing loudly on drift:
+- every `requirement_id` in `meta.slot_to_requirement` values appears in `list-requirements`;
+- every id in `meta.constraint_ids_used` is a known constraint (`validate-config --explain` or
+  a `list-constraints` command);
+- the JSON keys in §2.3 are present on a trivial audit.
 
 ---
 
