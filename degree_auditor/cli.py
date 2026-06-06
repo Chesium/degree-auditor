@@ -22,6 +22,7 @@ from degree_auditor.interactive_allocation import (
     write_commented_allocation_yaml,
 )
 from degree_auditor.manual_validation import ManualAllocationValidationError, validate_manual_allocations
+from degree_auditor.ordering import sort_allocations
 from degree_auditor.reporting import render_audit_report
 
 
@@ -64,7 +65,7 @@ def plan_allocation_command(
     courses = load_transcript(transcript)
     allocations = plan_allocations(loaded, courses)
     out.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"allocations": [allocation.model_dump(mode="json") for allocation in allocations]}
+    payload = {"allocations": [allocation.model_dump(mode="json") for allocation in sort_allocations(allocations)]}
     out.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
     console.print(f"[green]Wrote allocation plan[/green]: {out}")
 

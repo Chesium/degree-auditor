@@ -6,6 +6,7 @@ from typing import Any
 from degree_auditor.audit import MAJOR_PROGRAMME_ID
 from degree_auditor.allocation import FIXED_MAJOR_CORE_REQUIREMENT_ID, UE_RESIDUAL_REQUIREMENT_ID
 from degree_auditor.models import AuditResult, ConstraintResult, DegreeAuditConfig, SourceRef
+from degree_auditor.ordering import contract_row_key, sort_allocations
 
 
 COHORT_ID = "nus_ee_ay24_jc"
@@ -101,7 +102,10 @@ def to_contract_result(config: DegreeAuditConfig, result: AuditResult) -> dict[s
     constraints = _contract_constraints(result)
     failed_constraints = [item["id"] for item in constraints if item["status"] == "FAIL"]
     requirements = _contract_requirements(config, result)
-    specialisations = [_contract_specialisation(item) for item in result.specialisation_results]
+    specialisations = sorted(
+        [_contract_specialisation(item) for item in result.specialisation_results],
+        key=lambda item: item["id"],
+    )
     return {
         "pass": result.overall_status == "PASS",
         "cohort": COHORT_ID,
@@ -110,7 +114,7 @@ def to_contract_result(config: DegreeAuditConfig, result: AuditResult) -> dict[s
         "failed_requirements": [item["id"] for item in requirements if item["status"] == "FAIL"],
         "constraints": constraints,
         "failed_constraints": failed_constraints,
-        "warnings": result.warnings,
+        "warnings": sorted(dict.fromkeys(result.warnings)),
         "specialisations": specialisations,
         "allocations": [
             {
@@ -120,7 +124,7 @@ def to_contract_result(config: DegreeAuditConfig, result: AuditResult) -> dict[s
                 "allocation_role": allocation.allocation_role.value,
                 "manual": allocation.manual,
             }
-            for allocation in result.allocations
+            for allocation in sort_allocations(result.allocations)
         ],
     }
 
@@ -177,7 +181,7 @@ def _contract_requirements(config: DegreeAuditConfig, result: AuditResult) -> li
                 }
             )
             existing.add(mapped_id)
-    return rows
+    return sorted(rows, key=contract_row_key)
 
 
 def _contract_constraints(result: AuditResult) -> list[dict[str, Any]]:
@@ -191,7 +195,7 @@ def _contract_constraints(result: AuditResult) -> list[dict[str, Any]]:
                     "status": "PASS" if item.passed else "FAIL",
                     "message": item.message,
                     "source_ref": _dump_source_ref(item.source_ref),
-                    "affected_courses": item.affected_courses,
+                    "affected_courses": sorted(item.affected_courses),
                 }
             )
     for specialisation in result.specialisation_results:
@@ -208,7 +212,7 @@ def _contract_constraints(result: AuditResult) -> list[dict[str, Any]]:
                     "affected_courses": [],
                 }
             )
-    return _dedupe_constraint_rows(rows)
+    return sorted(_dedupe_constraint_rows(rows), key=contract_row_key)
 
 
 def _mapped_constraint_ids(item: ConstraintResult) -> list[str]:

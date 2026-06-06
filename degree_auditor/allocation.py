@@ -8,6 +8,7 @@ from degree_auditor.eligibility import (
     is_te_eligible,
 )
 from degree_auditor.models import Allocation, AllocationRole, CourseAttempt, DegreeAuditConfig
+from degree_auditor.ordering import sort_allocations
 
 
 FIXED_MAJOR_CORE_REQUIREMENT_ID = "EE24JC_MAJOR_CORE"
@@ -17,7 +18,7 @@ FIXED_MAJOR_CORE = {"EE1111A", "EE2111A", "EE2012", "EE2022", "EE2023", "EE2027"
 
 def plan_allocations(config: DegreeAuditConfig, courses: list[CourseAttempt]) -> list[Allocation]:
     allocations: list[Allocation] = []
-    course_codes = [course.effective_code for course in courses]
+    course_codes = sorted(course.effective_code for course in courses)
 
     for course_code in course_codes:
         if course_code in FIXED_MAJOR_CORE:
@@ -42,7 +43,7 @@ def plan_allocations(config: DegreeAuditConfig, courses: list[CourseAttempt]) ->
         if is_te_eligible(config, course_code):
             allocations.append(Allocation(course_code=course_code, requirement_id=TE_REQUIREMENT_ID))
 
-    for course in courses:
+    for course in sorted(courses, key=lambda item: item.effective_code):
         course_code = course.effective_code
         if not any(allocation.course_code == course_code for allocation in allocations):
             allocations.append(
@@ -54,7 +55,7 @@ def plan_allocations(config: DegreeAuditConfig, courses: list[CourseAttempt]) ->
                 )
             )
 
-    return allocations
+    return sort_allocations(allocations)
 
 
 def _count_allocations(allocations: list[Allocation], requirement_id: str) -> int:
@@ -72,4 +73,3 @@ def _has_allocation(allocations: list[Allocation], course_code: str, requirement
         and allocation.allocation_role != AllocationRole.ignored
         for allocation in allocations
     )
-

@@ -23,9 +23,12 @@ def test_report_text_includes_major_tc_te_and_source_refs() -> None:
     text = _render_text(config, result)
 
     assert "NUS EE AY24 JC Degree Audit" in text
+    assert "Overall Status" in text
     assert "Major Programme" in text
     assert "Technical Courses" in text
     assert "Technical Electives" in text
+    assert "Missing Courses and Units" in text
+    assert "Warnings and Manual Notes" in text
     assert "EE24JC_TE_SEP_ONE_NUS" in text
     assert "L_AY24JC_Checklist_Revised_3TC_4June2025.pdf" in text
 
@@ -58,10 +61,29 @@ def test_report_text_includes_specialisation_overlap_sep_and_capstone_lock() -> 
     assert "RBT" in text
     assert "RBT_WITH_CAPSTONE" in text
     assert "Overlap Budget" in text
+    assert "SEP Mapped Units" in text
+    assert "Capstone Lock" in text
     assert "8 / 8" in text
     assert "SEP Status" in text
     assert "Capstone lock active" in text
     assert "RBT_CAPSTONE_LOCK" in text
+
+
+def test_report_text_includes_manual_warning_and_missing_units() -> None:
+    config = load_config([CONFIG])
+    result = audit(
+        config,
+        [CourseAttempt(course_code="EE2012")],
+        [Allocation(course_code="EE2012", requirement_id="EE24JC_TE", manual=True)],
+    )
+
+    text = _render_text(config, result)
+
+    assert "Warnings and Manual Notes" in text
+    assert "MANUAL_ALLOC_INELIGIBLE" in text
+    assert "EE2012 is not eligible for the TE requirement" in text
+    assert "Missing Courses and Units" in text
+    assert "Missing fixed EE major core course" in text
 
 
 def test_audit_json_shape_contains_core_result_fields() -> None:
