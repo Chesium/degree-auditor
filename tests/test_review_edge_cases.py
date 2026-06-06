@@ -22,7 +22,6 @@ INVALID_INPUT_CONSTRAINTS = {
 
 
 UNSUPPORTED_CASES = {
-    "ee2026_both_to_major_and_tc_fail": "single-instance double-use validation beyond TC/TE is not implemented",
     "ae_core_overlap_with_tc_within_budget": "review fixture expects scoped specialisation pass; current contract reports whole-audit pass",
     "robotics_coursework_only_pass": "review fixture expects scoped specialisation pass; current contract reports whole-audit pass",
     "robotics_capstone_path_pass": "review fixture expects scoped specialisation pass; current contract reports whole-audit pass",
@@ -39,7 +38,6 @@ UNSUPPORTED_CASES = {
     "ue_residual_does_not_consume_overlap": "review fixture expects scoped overlap pass; current contract reports whole-audit pass",
     "spt_idp_path_inactive_without_flag_fail": "SPT IDP inactive-path public IDs are not aligned yet",
     "spt_idp_eg4301_units_not_counted": "SPT EG4301 exclusion is not implemented",
-    "capstone_double_count_two_specs_fail": "cross-specialisation capstone single-instance rule is not implemented",
 }
 
 

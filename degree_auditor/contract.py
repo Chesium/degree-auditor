@@ -308,6 +308,7 @@ def _infer_contract_scope(
                 "TC_NOT_TE",
                 "TC_EFFECTIVE_DATE_EE3033",
                 "MANUAL_ALLOC_INELIGIBLE",
+                "DOUBLE_USE_SINGLE_INSTANCE",
             },
         )
 

@@ -205,3 +205,21 @@ constraints:
       section: Ambiguity A-16
       quote: CDE4301/CDE4301A cannot be used to fulfil a specialisation if also used to fulfil the Second Major in Innovation & Design.
       notes: Distinct from the EE4002D/R capstone overlap lock.
+  - id: SPEC_OVERLAP_SINGLE_INSTANCE
+    description: A single EE4002D or EE4002R capstone instance cannot fulfil multiple capstone-sensitive specialisations.
+    constraint_type: spec_overlap_single_instance
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 1
+      section: Specialisation overlap and capstone lock
+      quote: At least 12 Units of the Specialisation must be distinct and not overlapping.
+      notes: Applied when one capstone instance is reused across multiple specialisations.
+  - id: CAP_LOCK
+    description: EE4002D or EE4002R capstone double-counting consumes the full specialisation overlap budget.
+    constraint_type: capstone_lock
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 1
+      section: Specialisation overlap and capstone lock
+      quote: Double counting of Integrated Project is allowed but consumes the full overlap budget for the Specialisation.
+      notes: Also used when one capstone is attempted across multiple capstone-sensitive specialisations.

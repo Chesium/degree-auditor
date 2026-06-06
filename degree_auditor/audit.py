@@ -228,6 +228,8 @@ def _constraint_warnings(failed_constraints: list) -> list[str]:
         "SEP_RESIDENCY_50",
         "SEP_PROGRAMME_60",
         "SEP_MAY_MAP_TC",
+        "DOUBLE_USE_SINGLE_INSTANCE",
+        "SPEC_OVERLAP_SINGLE_INSTANCE",
     }
     return [
         result.message

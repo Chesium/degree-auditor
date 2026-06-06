@@ -46,6 +46,7 @@ def evaluate_constraints(
     results.extend(_evaluate_sep_residency_rules(config, courses, allocations))
     results.extend(_evaluate_sep_to_tc_rule(config, courses, allocations))
     results.extend(_evaluate_manual_allocation_eligibility(config, courses, allocations))
+    results.extend(_evaluate_general_single_instance_conflicts(config, allocations))
     results.extend(_evaluate_alias_duplicate_credit(config, courses, allocations))
     return results
 
@@ -521,6 +522,38 @@ def _manual_allocation_allowed(
             f"{allocation.course_code} is not eligible for {requirement.id}",
         )
     return True, ""
+
+
+def _evaluate_general_single_instance_conflicts(
+    config: DegreeAuditConfig,
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
+    constraint = _constraint(config, "DOUBLE_USE_SINGLE_INSTANCE")
+    by_course: dict[str, set[str]] = defaultdict(set)
+    for allocation in allocations:
+        if allocation.allocation_role == "ignored":
+            continue
+        by_course[allocation.course_code].add(allocation.requirement_id)
+
+    conflicts = sorted(
+        course_code
+        for course_code, requirement_ids in by_course.items()
+        if course_code in {"EE2026", "EE2028"}
+        and {MAJOR_CHOICE_REQUIREMENT_ID, TC_REQUIREMENT_ID}.issubset(requirement_ids)
+    )
+    if not conflicts:
+        return [_result(constraint, True, "No incompatible single-instance allocation conflicts detected.")]
+    return [
+        _result(
+            constraint,
+            False,
+            "; ".join(
+                f"{course_code} cannot fulfil both Major digital choice and TC; TC eligibility requires the OTHER course"
+                for course_code in conflicts
+            ),
+            affected_courses=conflicts,
+        )
+    ]
 
 
 def _attempt_for_allocation(

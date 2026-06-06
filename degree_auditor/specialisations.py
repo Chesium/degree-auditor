@@ -25,6 +25,11 @@ SEP_ONLY_SPECIALISATIONS: set[str] = set()
 CAPSTONE_LOCK_SPECIALISATIONS = {"SPT", "RBT", "IOT", "MQM"}
 CAPSTONE_CODES = {"EE4002D", "EE4002R"}
 COMMON_CURRICULUM_CAPSTONE_REQUIREMENT_ID = "CDE_CAPSTONE"
+COMMON_CURRICULUM_CAPSTONE_REQUIREMENT_IDS = {
+    COMMON_CURRICULUM_CAPSTONE_REQUIREMENT_ID,
+    "CC_CAPSTONE",
+    "CC_ISK_CAPSTONE",
+}
 TECHNICAL_ELECTIVE_REQUIREMENT_ID = "EE24JC_TE"
 IDP_SECOND_MAJOR_REQUIREMENT_ID = "IDP_2ND_MAJOR"
 
@@ -127,6 +132,7 @@ def evaluate_specialisation_allocation_constraints(
     results: list[ConstraintResult] = []
     results.extend(_evaluate_manual_specialisation_eligibility(config, courses, allocations))
     results.extend(_evaluate_cde4301_idp_conflict(config, allocations))
+    results.extend(_evaluate_cross_specialisation_capstone_conflict(config, courses, allocations))
     return results
 
 
@@ -431,7 +437,7 @@ def _capstone_lock(
     common_capstones = {
         canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
         for allocation in allocations
-        if allocation.requirement_id == COMMON_CURRICULUM_CAPSTONE_REQUIREMENT_ID
+        if allocation.requirement_id in COMMON_CURRICULUM_CAPSTONE_REQUIREMENT_IDS
         and allocation.allocation_role != AllocationRole.ignored
         and canonical_code(config, _effective_code_for_allocation(config, courses, allocation)) in CAPSTONE_CODES
     }
@@ -812,6 +818,63 @@ def _evaluate_cde4301_idp_conflict(
             f"{', '.join(specialisations)} Specialisation",
             affected_courses=conflicts,
         )
+    ]
+
+
+def _evaluate_cross_specialisation_capstone_conflict(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
+    constraint = config.constraint_by_id("SPEC_OVERLAP_SINGLE_INSTANCE")
+    common_capstones = {
+        canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
+        for allocation in allocations
+        if allocation.requirement_id in COMMON_CURRICULUM_CAPSTONE_REQUIREMENT_IDS
+        and allocation.allocation_role != AllocationRole.ignored
+        and canonical_code(config, _effective_code_for_allocation(config, courses, allocation)) in CAPSTONE_CODES
+    }
+    if not common_capstones:
+        return [_constraint_result(constraint, True, "No capstone is double-counted across multiple specialisations.")]
+
+    requirement_to_specialisation = _requirement_to_specialisation(config)
+    specialisations_by_capstone: dict[str, set[str]] = defaultdict(set)
+    for allocation in allocations:
+        if allocation.allocation_role == AllocationRole.ignored:
+            continue
+        specialisation_id = requirement_to_specialisation.get(allocation.requirement_id)
+        if specialisation_id not in CAPSTONE_LOCK_SPECIALISATIONS:
+            continue
+        code = canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
+        if code in common_capstones:
+            specialisations_by_capstone[code].add(specialisation_id)
+
+    conflicts = {
+        code: sorted(specialisation_ids)
+        for code, specialisation_ids in specialisations_by_capstone.items()
+        if len(specialisation_ids) > 1
+    }
+    if not conflicts:
+        return [_constraint_result(constraint, True, "No capstone is double-counted across multiple specialisations.")]
+
+    messages = [
+        f"Capstone cannot be double-counted into more than one Specialisation ({code}: "
+        f"{', '.join(specialisation_ids)})"
+        for code, specialisation_ids in sorted(conflicts.items())
+    ]
+    return [
+        _constraint_result(
+            constraint,
+            False,
+            "; ".join(messages),
+            affected_courses=sorted(conflicts),
+        ),
+        _constraint_result(
+            config.constraint_by_id("CAP_LOCK"),
+            False,
+            "; ".join(messages),
+            affected_courses=sorted(conflicts),
+        ),
     ]
 
 
