@@ -29,4 +29,13 @@ course_aliases:
       section: Robotics / Industry 4.0 elective baskets
       quote: EE4802 / IE4213 Learning from Data
       notes: Alias supports shared elective basket matching.
-
+  - id: EG2605_CDE2605_ALIAS
+    alias: EG2605
+    canonical: CDE2605
+    description: EG2605 is the legacy UROP code now represented by CDE2605.
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 2
+      section: Major Requirements
+      quote: EG2605 Undergraduate Research Opportunities Programme UROP (4 units)
+      notes: Current internship materials list CDE2605/CDE2605R for UROP/UREx.

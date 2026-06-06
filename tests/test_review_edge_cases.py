@@ -27,7 +27,6 @@ UNSUPPORTED_CASES = {
     "ee2026_ee2028_choice_tc_success": "review uses final slot id EE24JC_MAJOR_DIGITAL; current input model uses an internal id",
     "ee2026_both_to_major_and_tc_fail": "single-instance double-use validation beyond TC/TE is not implemented",
     "ee3031_not_te_fail": "review warning text contract is stricter than the current emitted warning",
-    "ee3031_as_ue_pass": "UE residual scoped pass is not implemented as whole-audit success",
     "ee3033_not_te_fail": "review warning text contract is stricter than the current emitted warning",
     "ee3033_tc_before_effective_date_warn": "TC effective-date handling is not implemented",
     "ee3033_tc_on_effective_date_pass": "review fixture expects scoped TC effective-date pass; current contract reports whole-audit pass",
@@ -61,7 +60,6 @@ UNSUPPORTED_CASES = {
     "capstone_double_count_two_specs_fail": "cross-specialisation capstone single-instance rule is not implemented",
     "config_merge_identical_ok": "review fixture expects scoped config pass; current audit contract reports whole-audit pass",
     "source_ref_preserved_on_failure": "source-ref edge fixture expects scoped TC reporting",
-    "level1000_cap_exceeded_warn": "level-1000 unit cap is not implemented",
     "emerging_tech_not_set_elective_fail": "SET emerging-tech exclusion is not implemented",
     "non_ee_course_not_te_fail": "non-EE TE exclusion ID is not implemented",
     "cg3207_te_ay24_pass": "AY24 TE carve-out for CG3207 is not implemented",
@@ -71,14 +69,6 @@ UNSUPPORTED_CASES = {
     "cde4301_spec_idp_conflict_fail": "CDE4301 IDP/spec conflict is not implemented",
     "sep_residency_below_50_fail": "SEP residency rule is not implemented",
     "order_independence_check": "review fixture expects scoped major pass; current contract reports whole-audit pass",
-    "internship_ia_full_pass": "major internship requirement is not implemented",
-    "internship_via_plus_vip_pass": "major internship combinations are not implemented",
-    "internship_short_combo_fail": "major internship combinations are not implemented",
-    "internship_urop_cap_fail": "UROP internship cap is not implemented",
-    "internship_overflow_to_ue_pass": "internship overflow to UE is not implemented",
-    "internship_poly_apc_pass": "poly APC internship replacement is not implemented",
-    "internship_eg2605_alias_pass": "EG2605/CDE2605 internship alias is not implemented",
-    "internship_ceg_only_course_fail": "CEG-only internship exclusion is not implemented",
 }
 
 

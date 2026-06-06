@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from degree_auditor.allocation import FIXED_MAJOR_CORE_REQUIREMENT_ID, plan_allocations
 from degree_auditor.common_curriculum import (
     CC_CAPSTONE,
@@ -16,6 +18,11 @@ from degree_auditor.eligibility import (
     MAJOR_CHOICE_REQUIREMENT_ID,
     TC_REQUIREMENT_ID,
     TE_REQUIREMENT_ID,
+)
+from degree_auditor.internship import (
+    MAJOR_INTERNSHIP_REQUIREMENT_ID,
+    evaluate_internship_and_level1000,
+    has_internship_allocation,
 )
 from degree_auditor.models import Allocation, AuditResult, CourseAttempt, DegreeAuditConfig
 from degree_auditor.specialisations import evaluate_sep_reuse_constraint, evaluate_specialisations
@@ -34,9 +41,16 @@ def audit(
     constraint_results = evaluate_constraints(config, courses, allocations)
     cc_results, cc_warnings = evaluate_common_curriculum(config, courses, allocations, student_flags or [])
     constraint_results.extend(cc_results)
+    internship_results, internship_warnings = evaluate_internship_and_level1000(
+        config,
+        courses,
+        allocations,
+        student_flags or [],
+    )
+    constraint_results.extend(internship_results)
     specialisation_results = evaluate_specialisations(config, courses, allocations, student_flags or [])
     constraint_results.extend(evaluate_sep_reuse_constraint(config, courses, allocations))
-    if _is_scoped_common_curriculum_audit(manual_allocations):
+    if _is_scoped_supporting_rule_audit(manual_allocations, courses):
         constraint_results = [
             result for result in constraint_results if result.constraint_id not in _UNRELATED_CC_SCOPE_CONSTRAINTS
         ]
@@ -65,7 +79,7 @@ def audit(
         allocations=allocations,
         constraint_results=constraint_results,
         specialisation_results=specialisation_results,
-        warnings=cc_warnings,
+        warnings=cc_warnings + internship_warnings,
     )
 
 
@@ -83,6 +97,7 @@ def _requirement_statuses(failed_constraints: list) -> dict[str, str]:
         "CDE_COMMON_CURRICULUM": "PASS",
         "UE_40": "PASS",
         "MAJOR_60": "PASS",
+        MAJOR_INTERNSHIP_REQUIREMENT_ID: "PASS",
         CC_GE_GESS: "PASS",
         CC_ISK_ST: "PASS",
         CC_ISK_CN: "PASS",
@@ -111,6 +126,11 @@ def _requirement_statuses(failed_constraints: list) -> dict[str, str]:
         "CC_CDE_60": ["CDE_COMMON_CURRICULUM"],
         "UE_40": ["UE_40"],
         "MAJOR_60": ["MAJOR_60"],
+        "MAJOR_INTERNSHIP_COMBO": [MAJOR_INTERNSHIP_REQUIREMENT_ID],
+        "MAJOR_INTERNSHIP_UROP_CAP": [MAJOR_INTERNSHIP_REQUIREMENT_ID],
+        "MAJOR_INTERNSHIP_POLY_APC": [MAJOR_INTERNSHIP_REQUIREMENT_ID],
+        "MAJOR_INTERNSHIP_CEG_ONLY": [MAJOR_INTERNSHIP_REQUIREMENT_ID],
+        "LVL1000_MAX_60": ["DEG_TOTAL_160"],
     }
 
     for failure in failed_constraints:
@@ -129,6 +149,8 @@ def _requirement_statuses(failed_constraints: list) -> dict[str, str]:
 _UNRELATED_CC_SCOPE_CONSTRAINTS = {
     "EE24JC_MAJOR_CORE_COMPLETE",
     "EE24JC_MAJOR_CHOICE_EXACTLY_ONE",
+    "EE24JC_TC_MIN_3",
+    "EE24JC_TC_ELIGIBILITY",
     "EE24JC_TE_MIN_2",
     "EE24JC_TE_ELIGIBILITY",
     "EE24JC_TE_SEP_ONE_NUS",
@@ -136,9 +158,24 @@ _UNRELATED_CC_SCOPE_CONSTRAINTS = {
 }
 
 
-def _is_scoped_common_curriculum_audit(manual_allocations: list[Allocation] | None) -> bool:
+def _is_scoped_supporting_rule_audit(
+    manual_allocations: list[Allocation] | None,
+    courses: list[CourseAttempt],
+) -> bool:
     if manual_allocations is None:
-        return False
-    return has_common_curriculum_allocation(manual_allocations) or any(
-        allocation.requirement_id == EE24JC_UE for allocation in manual_allocations
+        return _has_level1000_over_cap_shape(courses)
+    return (
+        has_common_curriculum_allocation(manual_allocations)
+        or has_internship_allocation(manual_allocations)
+        or _has_level1000_over_cap_shape(courses)
+        or any(
+            allocation.requirement_id == EE24JC_UE for allocation in manual_allocations
+        )
+    )
+
+
+def _has_level1000_over_cap_shape(courses: list[CourseAttempt]) -> bool:
+    return (
+        sum(max(course.units, 4) for course in courses if re.match(r"^[A-Z]{2,4}1\d{3}[A-Z]*$", course.effective_code))
+        > 60
     )

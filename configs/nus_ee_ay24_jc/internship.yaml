@@ -1,0 +1,81 @@
+course_pools:
+  - id: MAJOR_INTERNSHIP_POOL
+    description: EE major internship course pool.
+    includes:
+      - EG3611A
+      - EG3612
+      - CFG2101
+      - CDE2605
+      - CDE2605R
+      - ETP3201
+      - ETP3205
+      - ETP3206
+      - ETP3207
+      - EG3611P
+    excludes:
+      - CP3880
+      - CP3200
+      - CP3202
+    source_ref:
+      document: https://cde.nus.edu.sg/undergraduate/engineering-internships/student-info/
+      section: CDE Engineering Internships
+      quote: Engineering internship course list and unit-bearing options.
+      notes: CP3880/CP3200/CP3202 are CEG-only and excluded for EE.
+
+requirements:
+  - id: MAJOR_INTERNSHIP_10
+    description: EE major internship requirement.
+    requirement_type: pool_count
+    pool_id: MAJOR_INTERNSHIP_POOL
+    units: 10
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 2
+      section: Major Requirements
+      quote: Internship 10 units
+      notes: Satisfied by one internship course or a valid combination summing to at least 10 units.
+
+constraints:
+  - id: MAJOR_INTERNSHIP_COMBO
+    description: Internship may be one course or a valid combination summing to at least 10 units.
+    constraint_type: major_internship_combo
+    source_ref:
+      document: https://cde.nus.edu.sg/undergraduate/engineering-internships/student-info/
+      section: CDE Engineering Internships
+      quote: Course combinations may be used to satisfy the 10-unit internship requirement.
+  - id: MAJOR_INTERNSHIP_UROP_CAP
+    description: At most 4 units from UROP/UREx may count toward major internship.
+    constraint_type: major_internship_urop_cap
+    source_ref:
+      document: https://cde.nus.edu.sg/undergraduate/engineering-internships/student-info/
+      section: CDE Engineering Internships
+      quote: A maximum of 4 units from UROP/UREx can count towards the major internship requirement.
+  - id: MAJOR_INTERNSHIP_UE_OVERFLOW
+    description: Internship units beyond 10 count toward UE, not another major internship requirement.
+    constraint_type: major_internship_ue_overflow
+    source_ref:
+      document: https://cde.nus.edu.sg/undergraduate/engineering-internships/student-info/
+      section: CDE Engineering Internships
+      quote: Up to 10 units can be used to fulfil the major internship requirement and remaining units count toward Unrestricted Electives.
+  - id: MAJOR_INTERNSHIP_POLY_APC
+    description: Poly-direct-entry APC EG3611P satisfies the major internship requirement.
+    constraint_type: major_internship_poly_apc
+    source_ref:
+      document: https://cde.nus.edu.sg/undergraduate/engineering-internships/student-info/
+      section: CDE Engineering Internships
+      quote: Poly-Direct Entry students receive Advanced Placement Credits for EG3611P Industrial Attachment.
+  - id: MAJOR_INTERNSHIP_CEG_ONLY
+    description: CP3880, CP3200, and CP3202 are CEG-only and cannot satisfy EE major internship.
+    constraint_type: major_internship_ceg_only
+    source_ref:
+      document: https://cde.nus.edu.sg/undergraduate/engineering-internships/student-info/
+      section: CDE Engineering Internships
+      quote: CP3880 / CP3200 / CP3202 ATAP / SIP Only applicable to CEG students.
+  - id: LVL1000_MAX_60
+    description: No more than 60 level-1000 units count toward graduation.
+    constraint_type: level1000_max_60
+    source_ref:
+      document: L_AY24JC_Checklist_Revised_3TC_4June2025.pdf
+      page: 3
+      section: Notes
+      quote: Students should not read more than 60 units of level 1000 courses.
