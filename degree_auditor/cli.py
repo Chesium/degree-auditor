@@ -21,6 +21,7 @@ from degree_auditor.interactive_allocation import (
     parse_selection,
     write_commented_allocation_yaml,
 )
+from degree_auditor.manual_validation import ManualAllocationValidationError, validate_manual_allocations
 from degree_auditor.reporting import render_audit_report
 
 
@@ -169,7 +170,9 @@ def audit_command(
         courses = load_transcript(transcript)
         student_flags = load_student_flags(transcript)
         allocations = load_allocations(allocation) if allocation else None
-    except (ConfigLoadError, ValidationError, ValueError) as exc:
+        if allocations is not None:
+            validate_manual_allocations(loaded, courses, allocations)
+    except (ConfigLoadError, ManualAllocationValidationError, ValidationError, ValueError) as exc:
         typer.echo(f"Invalid input: {exc}", err=True)
         raise typer.Exit(1) from exc
     result = audit(loaded, courses, allocations, student_flags=student_flags)

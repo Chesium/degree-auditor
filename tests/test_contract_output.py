@@ -78,7 +78,33 @@ def test_audit_contract_known_id_vocabulary(tmp_path: Path) -> None:
         "--format",
         "json",
     )
+    te_transcript = tmp_path / "te_exclusions_transcript.yaml"
+    te_transcript.write_text(
+        yaml.safe_dump(
+            {
+                "courses": [
+                    {"course_code": "EE1111A"},
+                    {"course_code": "EE2111A"},
+                    {"course_code": "EE2012"},
+                    {"course_code": "EE2022"},
+                    {"course_code": "EE2023"},
+                    {"course_code": "EE2027"},
+                    {"course_code": "PC2020"},
+                    {"course_code": "EE2028"},
+                    {"course_code": "EE2026"},
+                    {"course_code": "EE3331C"},
+                    {"course_code": "EE3408C"},
+                    {"course_code": "EE3031"},
+                    {"course_code": "EE3033"},
+                ]
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
     te_exclusions = _invoke_audit(
+        "--transcript",
+        str(te_transcript),
         "--allocation",
         str(ALLOCATIONS / "te_exclusions.yaml"),
         "--format",

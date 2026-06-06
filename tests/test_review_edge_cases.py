@@ -47,15 +47,11 @@ UNSUPPORTED_CASES = {
     "sep_same_course_two_specialisations_fail": "SEP no-reuse public ID is not emitted for the review slot vocabulary yet",
     "ue_residual_does_not_consume_overlap": "review fixture expects scoped overlap pass; current contract reports whole-audit pass",
     "manual_override_changes_greedy_choice": "manual override warning contract is not implemented",
-    "manual_alloc_unknown_course_error": "manual allocation validity is reported as invalid input rather than contract JSON",
-    "manual_alloc_units_exceed_attempt_error": "manual allocation unit conservation is not implemented as a contract constraint",
-    "manual_alloc_ineligible_requirement_fail": "general manual allocation eligibility constraint is not implemented",
     "spt_idp_path_inactive_without_flag_fail": "SPT IDP inactive-path public IDs are not aligned yet",
     "spt_idp_eg4301_units_not_counted": "SPT EG4301 exclusion is not implemented",
     "capstone_double_count_two_specs_fail": "cross-specialisation capstone single-instance rule is not implemented",
     "config_merge_identical_ok": "review fixture expects scoped config pass; current audit contract reports whole-audit pass",
     "source_ref_preserved_on_failure": "source-ref edge fixture expects scoped TC reporting",
-    "tc_closed_list_reject_fail": "closed TC pool ineligible-allocation constraint is not implemented",
     "order_independence_check": "review fixture expects scoped major pass; current contract reports whole-audit pass",
 }
 

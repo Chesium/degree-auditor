@@ -10,6 +10,7 @@ from degree_auditor.eligibility import (
     TC_REQUIREMENT_ID,
     TE_REQUIREMENT_ID,
     canonical_code,
+    course_in_pool,
     is_non_ee_te_excluded,
     is_tc_eligible,
     is_te_eligible,
@@ -44,6 +45,7 @@ def evaluate_constraints(
     results.extend(_evaluate_te_sep_rules(config, courses, allocations))
     results.extend(_evaluate_sep_residency_rules(config, courses, allocations))
     results.extend(_evaluate_sep_to_tc_rule(config, courses, allocations))
+    results.extend(_evaluate_manual_allocation_eligibility(config, courses, allocations))
     results.extend(_evaluate_alias_duplicate_credit(config, courses, allocations))
     return results
 
@@ -443,6 +445,84 @@ def _evaluate_sep_to_tc_rule(
     ]
 
 
+def _evaluate_manual_allocation_eligibility(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
+    constraint = _constraint(config, "MANUAL_ALLOC_INELIGIBLE")
+    failures: list[tuple[str, str]] = []
+    for allocation in allocations:
+        if allocation.allocation_role == "ignored" or not allocation.manual:
+            continue
+        allowed, message = _manual_allocation_allowed(config, courses, allocation, allocations)
+        if not allowed:
+            failures.append((allocation.course_code, message))
+    if not failures:
+        return [_result(constraint, True, "Manual allocations match requirement eligibility.")]
+    return [
+        _result(
+            constraint,
+            False,
+            "; ".join(message for _, message in failures),
+            affected_courses=sorted({course_code for course_code, _ in failures}),
+        )
+    ]
+
+
+def _manual_allocation_allowed(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocation: Allocation,
+    allocations: list[Allocation],
+) -> tuple[bool, str]:
+    if allocation.requirement_id in {UE_RESIDUAL_REQUIREMENT_ID, "EE24JC_UE", "IGNORED", "IDP_2ND_MAJOR"}:
+        return True, ""
+    code = canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
+    if allocation.requirement_id == TC_REQUIREMENT_ID:
+        if is_tc_eligible(config, code, allocations):
+            return True, ""
+        return False, f"{allocation.course_code} is not in the closed TC list; cannot satisfy the TC requirement"
+    if allocation.requirement_id == TE_REQUIREMENT_ID:
+        if code in {"EE3031", "EE3033"} or is_non_ee_te_excluded(allocation.course_code):
+            return True, ""
+        if is_te_eligible(config, code, original_code=allocation.course_code):
+            return True, ""
+        return False, f"{allocation.course_code} is not eligible for the TE requirement (EE4xxx/EE3xxxC/EE3xxx only)"
+    if allocation.requirement_id == MAJOR_CHOICE_REQUIREMENT_ID:
+        if code in {"EE2026", "EE2028"}:
+            return True, ""
+        return False, f"{allocation.course_code} is not eligible for the EE2026/EE2028 major choice"
+
+    requirement = config.requirement_by_id(allocation.requirement_id)
+    if requirement is None:
+        return True, ""
+    tags = _topic_tags_for_allocation(config, courses, allocation)
+    if requirement.id == "CC_GE_GESS" and code == "CDE2501":
+        return True, ""
+    if requirement.id in {"CC_ISK_ST", "CC_ISK_CN", "CC_ISK_SF"} and is_tc_eligible(config, code, allocations):
+        return True, ""
+    requirement_courses = {canonical_code(config, course) for course in requirement.courses}
+    if requirement.requirement_type in {"course_list", "all_of", "choice"}:
+        return (
+            code in requirement_courses,
+            f"{allocation.course_code} is not eligible for {requirement.id}",
+        )
+    if requirement.requirement_type in {"pool_count", "choose_count", "choose_units"}:
+        pool = config.pool_by_id(requirement.pool_id) if requirement.pool_id else None
+        return (
+            bool(pool and course_in_pool(code, pool)),
+            f"{allocation.course_code} is not eligible for {requirement.id}",
+        )
+    if requirement.requirement_type == "project_option":
+        required_tags = {tag.lower() for tag in requirement.topic_tags}
+        return (
+            code in requirement_courses and (not required_tags or required_tags <= tags),
+            f"{allocation.course_code} is not eligible for {requirement.id}",
+        )
+    return True, ""
+
+
 def _attempt_for_allocation(
     config: DegreeAuditConfig,
     courses: list[CourseAttempt],
@@ -505,6 +585,15 @@ def _effective_code_for_allocation(
 ) -> str:
     attempt = _attempt_for_allocation(config, courses, allocation)
     return attempt.effective_code if attempt is not None else allocation.course_code
+
+
+def _topic_tags_for_allocation(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocation: Allocation,
+) -> set[str]:
+    attempt = _attempt_for_allocation(config, courses, allocation)
+    return {tag.lower() for tag in attempt.topic_tags} if attempt is not None else set()
 
 
 def _is_sep_restricted_te_code(course_code: str) -> bool:
