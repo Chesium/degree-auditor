@@ -154,3 +154,21 @@ constraints:
       section: Cross-listed courses
       quote: EE3306/ME3163 Introduction to Cyber Physical Systems
       notes: Also applies to EE3305/ME3243 and EE3331C/ME3142.
+  - id: MANUAL_ALLOC_INELIGIBLE
+    description: Manual allocations must still match the configured requirement or basket eligibility.
+    constraint_type: manual_alloc_ineligible
+    source_ref:
+      document: review
+      page: null
+      section: Black-box review
+      quote: Manual allocation cannot bypass eligibility.
+      notes: Used for review-contract cases where a public slot id is supplied directly.
+  - id: CDE4301_NO_SPEC_IF_IDP
+    description: CDE4301/CDE4301A used for the iDP Second Major cannot also fulfil an EE Specialisation.
+    constraint_type: cde4301_no_spec_if_idp
+    source_ref:
+      document: review
+      page: null
+      section: Ambiguity A-16
+      quote: CDE4301/CDE4301A cannot be used to fulfil a specialisation if also used to fulfil the Second Major in Innovation & Design.
+      notes: Distinct from the EE4002D/R capstone overlap lock.

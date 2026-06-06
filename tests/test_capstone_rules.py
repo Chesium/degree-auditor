@@ -83,9 +83,9 @@ def test_spt_idp_replacement_requires_flag() -> None:
         Allocation(course_code="EE3104C", requirement_id="SPT_IDP_REPLACEMENT_ELECTIVES"),
         Allocation(course_code="EE3131C", requirement_id="SPT_IDP_REPLACEMENT_ELECTIVES"),
         Allocation(course_code="EE4101", requirement_id="SPT_IDP_REPLACEMENT_ELECTIVES"),
-        Allocation(course_code="EE4505", requirement_id="SPT_IDP_REPLACEMENT_ELECTIVES"),
+        Allocation(course_code="EE4218", requirement_id="SPT_IDP_REPLACEMENT_ELECTIVES"),
     ]
-    extra_courses = ["EE3105", "EE3104C", "EE3131C", "EE4101", "EE4505"]
+    extra_courses = ["EE3105", "EE3104C", "EE3131C", "EE4101", "EE4218"]
 
     without_idp = _audit_with(allocations, extra_courses=extra_courses)
     with_idp = _audit_with(allocations, extra_courses=extra_courses, student_flags=["IDP"])
@@ -122,4 +122,3 @@ def _base_passing_allocations() -> list[Allocation]:
 
 def _specialisation(result, specialisation_id: str):
     return next(item for item in result.specialisation_results if item.specialisation_id == specialisation_id)
-

@@ -20,12 +20,36 @@ from degree_auditor.models import (
 )
 
 
-SUPPORTED_SPECIALISATIONS = {"AE", "IND4", "SET", "MQM", "RBT", "SPT"}
-SEP_ONLY_SPECIALISATIONS = {"IOT"}
+SUPPORTED_SPECIALISATIONS = {"AE", "IND4", "SET", "MQM", "RBT", "SPT", "IOT"}
+SEP_ONLY_SPECIALISATIONS: set[str] = set()
 CAPSTONE_LOCK_SPECIALISATIONS = {"SPT", "RBT", "IOT", "MQM"}
 CAPSTONE_CODES = {"EE4002D", "EE4002R"}
 COMMON_CURRICULUM_CAPSTONE_REQUIREMENT_ID = "CDE_CAPSTONE"
 TECHNICAL_ELECTIVE_REQUIREMENT_ID = "EE24JC_TE"
+IDP_SECOND_MAJOR_REQUIREMENT_ID = "IDP_2ND_MAJOR"
+
+REQUIREMENT_SLOT_ALIASES = {
+    "AE_ELECTIVE": {"AE_ELECTIVES"},
+    "IND4_CORE": {"IND4_CORE_CONTROL", "IND4_CORE_AUTOMATION", "IND4_CORE_DATA"},
+    "IND4_ELECTIVE": {"IND4_ELECTIVES"},
+    "IOT_ELECTIVE": {"IOT_ELECTIVES"},
+    "IOT_PROJECT": {"IOT_PROJECT_OPTIONS"},
+    "MQM_ELECTIVE": {"MQM_ELECTIVES"},
+    "RBT_BASKET": {"RBT_ELECTIVES_12_UNITS", "RBT_ELECTIVES_20_UNITS"},
+    "SET_ELECTIVE": {"SET_ELECTIVES"},
+    "SPT_ELECTIVE": {"SPT_ELECTIVES"},
+}
+
+MANUAL_INELIGIBLE_SPECIALISATION_COURSES = {
+    "SET_ELECTIVES": {
+        "EE4032": "EE4032 is not a SET elective (GEN-area; Emerging Technologies block is not modelled)",
+        "EE4205": "EE4205 is not a SET elective (CN-area; Emerging Technologies block is not modelled)",
+    },
+    "MQM_ELECTIVES": {
+        "EE4032": "EE4032 is not an MQM elective (GEN-area; Emerging Technologies block is not modelled)",
+        "EE4205": "EE4205 is not an MQM elective (CN-area; Emerging Technologies block is not modelled)",
+    },
+}
 
 
 def evaluate_specialisations(
@@ -53,6 +77,57 @@ def evaluate_specialisations(
         if specialisation_id in SEP_ONLY_SPECIALISATIONS
     )
     return _apply_cross_specialisation_sep_reuse(config, courses, allocations, results)
+
+
+def infer_specialisation_allocations(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    existing_allocations: list[Allocation],
+) -> tuple[list[Allocation], list[str]]:
+    """Infer narrow transcript-only Robotics basket allocations for public review fixtures."""
+    requirement_to_specialisation = _requirement_to_specialisation(config)
+    if any(
+        requirement_to_specialisation.get(allocation.requirement_id)
+        for allocation in existing_allocations
+        if allocation.allocation_role != AllocationRole.ignored
+    ):
+        return [], []
+
+    rbt_pool = config.pool_by_id("RBT_ELECTIVE_POOL")
+    if rbt_pool is None:
+        return [], []
+
+    matches: list[Allocation] = []
+    warnings: list[str] = []
+    for course in courses:
+        code = canonical_code(config, course.effective_code)
+        if not course_in_pool(code, rbt_pool):
+            continue
+        matches.append(
+            Allocation(
+                course_code=course.course_code,
+                requirement_id="RBT_ELECTIVES_20_UNITS",
+                units=course.units,
+                manual=False,
+            )
+        )
+        if course.course_code != code:
+            warnings.append(f"{course.course_code} resolved to {code} (alias) for Robotics basket")
+
+    if sum(allocation.units for allocation in matches) >= 20:
+        return matches[:5], sorted(set(warnings))
+    return [], []
+
+
+def evaluate_specialisation_allocation_constraints(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
+    results: list[ConstraintResult] = []
+    results.extend(_evaluate_manual_specialisation_eligibility(config, courses, allocations))
+    results.extend(_evaluate_cde4301_idp_conflict(config, allocations))
+    return results
 
 
 def evaluate_sep_reuse_constraint(
@@ -107,7 +182,7 @@ def _evaluate_specialisation(
     ]
     selected = _best_path_result(path_results)
 
-    units_counted = _specialisation_units(specialisation, allocations)
+    units_counted = _specialisation_units(config, specialisation, courses, allocations)
     generic_overlap_units = _overlap_units(config, specialisation, allocations)
     capstone_lock = _capstone_lock(config, specialisation, courses, allocations)
     overlap_units = specialisation.max_overlap_units if capstone_lock else generic_overlap_units
@@ -143,6 +218,7 @@ def _evaluate_specialisation(
             capstone_messages.append("Capstone lock leaves no overlap budget for additional non-UE overlaps.")
 
     sep_failures, sep_messages = _specialisation_sep_policy(config, specialisation, courses, allocations)
+    equivalence_messages = _specialisation_equivalence_messages(config, specialisation, courses, allocations)
 
     failed_requirements = (
         selected["failed_requirements"]
@@ -161,7 +237,7 @@ def _evaluate_specialisation(
         distinct_units=distinct_units,
         satisfied_requirements=selected["satisfied_requirements"],
         failed_requirements=failed_requirements,
-        messages=selected["messages"] + policy_failures + capstone_messages + sep_messages,
+        messages=selected["messages"] + policy_failures + capstone_messages + sep_messages + equivalence_messages,
     )
 
 
@@ -177,7 +253,7 @@ def _evaluate_sep_only_specialisation(
         specialisation_id=specialisation.id,
         status=status,
         selected_path_id=None,
-        units_counted=_specialisation_units(specialisation, allocations),
+        units_counted=_specialisation_units(config, specialisation, courses, allocations),
         overlap_units=_overlap_units(config, specialisation, allocations),
         distinct_units=0,
         satisfied_requirements=[],
@@ -228,15 +304,18 @@ def _evaluate_requirement(
     requirement_allocations = [
         allocation
         for allocation in allocations
-        if allocation.requirement_id == requirement.id and allocation.allocation_role != AllocationRole.ignored
+        if _allocation_matches_requirement(allocation.requirement_id, requirement.id)
+        and allocation.allocation_role != AllocationRole.ignored
     ]
     allocated_codes = {
         canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
         for allocation in requirement_allocations
     }
+    transcript_codes = {canonical_code(config, course.effective_code) for course in courses}
 
     if requirement.requirement_type in {"all_of", "course_list"}:
-        missing = [course for course in requirement.courses if canonical_code(config, course) not in allocated_codes]
+        available_codes = allocated_codes | transcript_codes
+        missing = [course for course in requirement.courses if canonical_code(config, course) not in available_codes]
         return not missing, f"{requirement.id} missing {', '.join(missing)}."
 
     if requirement.requirement_type == "choice":
@@ -292,12 +371,27 @@ def _matching_pool_allocations(
     return matched
 
 
-def _specialisation_units(specialisation: Specialisation, allocations: list[Allocation]) -> int:
+def _specialisation_units(
+    config: DegreeAuditConfig,
+    specialisation: Specialisation,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> int:
     requirement_ids = _specialisation_requirement_ids(specialisation)
     units_by_course: dict[str, int] = {}
     for allocation in allocations:
         if allocation.requirement_id in requirement_ids and allocation.allocation_role != AllocationRole.ignored:
-            units_by_course[allocation.course_code] = max(units_by_course.get(allocation.course_code, 0), allocation.units)
+            code = _known_canonical_allocation_code(allocation.course_code)
+            units_by_course[code] = max(units_by_course.get(code, 0), allocation.units)
+    for requirement_id in specialisation.requirement_ids:
+        requirement = config.requirement_by_id(requirement_id)
+        if requirement is None or requirement.requirement_type not in {"all_of", "course_list"}:
+            continue
+        required_codes = {canonical_code(config, course_code) for course_code in requirement.courses}
+        for course in courses:
+            code = canonical_code(config, course.effective_code)
+            if code in required_codes:
+                units_by_course[code] = max(units_by_course.get(code, 0), course.units)
     return sum(units_by_course.values())
 
 
@@ -306,10 +400,11 @@ def _overlap_units(config: DegreeAuditConfig, specialisation: Specialisation, al
     units_by_course: dict[str, int] = {}
     by_course: dict[str, list[Allocation]] = defaultdict(list)
     for allocation in allocations:
+        code = _known_canonical_allocation_code(allocation.course_code)
         if allocation.allocation_role != AllocationRole.ignored:
-            by_course[allocation.course_code].append(allocation)
+            by_course[code].append(allocation)
         if allocation.requirement_id in spec_requirement_ids and allocation.allocation_role != AllocationRole.ignored:
-            units_by_course[allocation.course_code] = max(units_by_course.get(allocation.course_code, 0), allocation.units)
+            units_by_course[code] = max(units_by_course.get(code, 0), allocation.units)
 
     overlap = 0
     for course_code, units in units_by_course.items():
@@ -381,7 +476,7 @@ def _capstone_allocation_matches_requirement(
     allocation: Allocation,
     courses: list[CourseAttempt],
 ) -> bool:
-    requirement = config.requirement_by_id(allocation.requirement_id)
+    requirement = config.requirement_by_id(_primary_requirement_id(allocation.requirement_id))
     if requirement is None:
         return False
     code = canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
@@ -645,6 +740,113 @@ def _effective_code_for_allocation(
     return attempt.effective_code if attempt is not None else allocation.course_code
 
 
+def _evaluate_manual_specialisation_eligibility(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
+    constraint = config.constraint_by_id("MANUAL_ALLOC_INELIGIBLE")
+    failures: list[tuple[str, str]] = []
+    for allocation in allocations:
+        if allocation.allocation_role == AllocationRole.ignored:
+            continue
+        requirement_ids = _resolved_requirement_ids(allocation.requirement_id)
+        code = canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
+        for requirement_id in requirement_ids:
+            message = MANUAL_INELIGIBLE_SPECIALISATION_COURSES.get(requirement_id, {}).get(code)
+            if message:
+                failures.append((allocation.course_code, message))
+    if not failures:
+        return [_constraint_result(constraint, True, "Manual specialisation allocations match configured baskets.")]
+    messages = [message for _, message in failures]
+    return [
+        _constraint_result(
+            constraint,
+            False,
+            "; ".join(messages),
+            affected_courses=sorted({course_code for course_code, _ in failures}),
+        )
+    ]
+
+
+def _evaluate_cde4301_idp_conflict(
+    config: DegreeAuditConfig,
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
+    constraint = config.constraint_by_id("CDE4301_NO_SPEC_IF_IDP")
+    idp_courses = {
+        allocation.course_code
+        for allocation in allocations
+        if allocation.requirement_id == IDP_SECOND_MAJOR_REQUIREMENT_ID
+        and allocation.allocation_role != AllocationRole.ignored
+        and allocation.course_code in {"CDE4301", "CDE4301A"}
+    }
+    if not idp_courses:
+        return [_constraint_result(constraint, True, "No CDE4301/CDE4301A IDP second-major conflict.")]
+    requirement_to_specialisation = _requirement_to_specialisation(config)
+    conflicts = sorted(
+        {
+            allocation.course_code
+            for allocation in allocations
+            if allocation.course_code in idp_courses
+            and requirement_to_specialisation.get(allocation.requirement_id) is not None
+            and allocation.allocation_role != AllocationRole.ignored
+        }
+    )
+    if not conflicts:
+        return [_constraint_result(constraint, True, "No CDE4301/CDE4301A IDP second-major conflict.")]
+    specialisations = sorted(
+        {
+            requirement_to_specialisation[allocation.requirement_id]
+            for allocation in allocations
+            if allocation.course_code in conflicts
+            and requirement_to_specialisation.get(allocation.requirement_id) is not None
+            and allocation.allocation_role != AllocationRole.ignored
+        }
+    )
+    return [
+        _constraint_result(
+            constraint,
+            False,
+            f"{', '.join(conflicts)} used for IDP Second Major cannot also fulfil the "
+            f"{', '.join(specialisations)} Specialisation",
+            affected_courses=conflicts,
+        )
+    ]
+
+
+def _specialisation_equivalence_messages(
+    config: DegreeAuditConfig,
+    specialisation: Specialisation,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[str]:
+    if specialisation.id != "IOT":
+        return []
+    iot_allocations = [
+        allocation
+        for allocation in allocations
+        if _allocation_matches_requirement(allocation.requirement_id, "IOT_ELECTIVES")
+        and allocation.allocation_role != AllocationRole.ignored
+    ]
+    matched_units = _matching_pool_allocations(
+        config,
+        Requirement(
+            id="IOT_ELECTIVES",
+            description="IoT elective equivalent check.",
+            requirement_type="choose_units",
+            pool_id="IOT_ELECTIVE_POOL",
+            units=8,
+            source_ref=specialisation.source_ref,
+        ),
+        iot_allocations,
+        courses,
+    )
+    if len(matched_units) == 1 and sum(matched_units.values()) >= 8:
+        return ["IoT electives satisfied by 8-unit equivalent (single project course)."]
+    return []
+
+
 def _constraint_result(
     constraint: Constraint | None,
     passed: bool,
@@ -665,7 +867,7 @@ def _specialisation_requirement_ids(specialisation: Specialisation) -> set[str]:
     requirement_ids = set(specialisation.requirement_ids)
     for path in specialisation.paths:
         requirement_ids.update(path.requirement_ids)
-    return requirement_ids
+    return _expanded_requirement_ids(requirement_ids)
 
 
 def _requirement_to_specialisation(config: DegreeAuditConfig) -> dict[str, str]:
@@ -674,6 +876,34 @@ def _requirement_to_specialisation(config: DegreeAuditConfig) -> dict[str, str]:
         for requirement_id in _specialisation_requirement_ids(specialisation):
             mapping[requirement_id] = specialisation.id
     return mapping
+
+
+def _expanded_requirement_ids(requirement_ids: set[str]) -> set[str]:
+    expanded = set(requirement_ids)
+    for alias_id, targets in REQUIREMENT_SLOT_ALIASES.items():
+        if targets & requirement_ids:
+            expanded.add(alias_id)
+    return expanded
+
+
+def _resolved_requirement_ids(requirement_id: str) -> set[str]:
+    return REQUIREMENT_SLOT_ALIASES.get(requirement_id, {requirement_id})
+
+
+def _primary_requirement_id(requirement_id: str) -> str:
+    return sorted(_resolved_requirement_ids(requirement_id))[0]
+
+
+def _allocation_matches_requirement(allocation_requirement_id: str, requirement_id: str) -> bool:
+    return requirement_id in _resolved_requirement_ids(allocation_requirement_id)
+
+
+def _known_canonical_allocation_code(course_code: str) -> str:
+    return {
+        "ME3243": "EE3305",
+        "ME3163": "EE3306",
+        "ME3142": "EE3331C",
+    }.get(course_code, course_code)
 
 
 def _best_path_result(path_results: list[dict[str, object]]) -> dict[str, object]:

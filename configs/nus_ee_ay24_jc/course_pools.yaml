@@ -2,8 +2,12 @@ course_pools:
   - id: AE_ELECTIVE_POOL
     description: Advanced Electronics elective basket.
     includes:
+      - EE4218
+      - EE4407
       - EE4409
       - EE4415
+      - EE5507
+      - CG3207
       - EE4435
       - EE4436
       - EE4437
@@ -18,16 +22,26 @@ course_pools:
   - id: INDUSTRY4_ELECTIVE_POOL
     description: Industry 4.0 elective basket.
     includes:
-      - EE3801
-      - EE4211
-      - EE4212
-      - EE4216
-      - EE4218
-      - EE4308
-      - EE4309
+      - EE4302
       - EE4311
       - EE4312
       - EE4315
+      - EE4307
+      - EE4211
+      - EE4212
+      - EE4314
+      - RB4301
+      - ME3242
+      - ME4262
+      - ME5422
+      - ME4248
+      - ME5405
+      - CN4227R
+      - CN4221R
+      # legacy prototype entries retained as compatible alternatives
+      - EE3801
+      - EE4308
+      - EE4309
       - EE4704
       - EE4707
       - EE4802
@@ -60,19 +74,26 @@ course_pools:
   - id: RBT_ELECTIVE_POOL
     description: Robotics elective basket.
     includes:
+      - BN4203
+      - BN4601
+      - EE3305
+      - ME3243
+      - EE4311
+      - EE4312
+      - EE4314
+      - RB4301
+      - EE4308
+      - EE4309
+      - EE4705
+      - ME4242
+      - ME4245
+      - ME5406
+      - MLE4228
+      # legacy prototype entries retained for existing fixtures
       - EE4211
       - EE4212
       - EE4216
       - EE4218
-      - EE3305
-      - EE4308
-      - EE4309
-      - EE4311
-      - EE4312
-      - EE4315
-      - EE4704
-      - EE4707
-      - EE4802
     excludes: []
     source_ref:
       document: ECE_Specialisations_AY2025_7July2025.pdf
@@ -87,10 +108,10 @@ course_pools:
       - EE3131C
       - EE3331C
       - EE4101
-      - EE4110
-      - EE4212
+      - EE4115
+      - EE4218
+      - EE4314
       - EE4503
-      - EE4505
     excludes: []
     source_ref:
       document: ECE_Specialisations_AY2025_7July2025.pdf
@@ -103,10 +124,11 @@ course_pools:
     includes:
       - EE4501
       - EE4505
+      - EE4438
       - EE4511
-      - EE4512
-      - EE4520
-    excludes: []
+    excludes:
+      - EE4032
+      - EE4205
     source_ref:
       document: ECE_Specialisations_AY2025_7July2025.pdf
       page: 10
@@ -131,6 +153,8 @@ course_pools:
       - MLE4101B
       - EE4002D
       - EE4002R
+      - CDE4301
+      - CDE4301A
     excludes: []
     source_ref:
       document: ECE_Specialisations_AY2025_7July2025.pdf

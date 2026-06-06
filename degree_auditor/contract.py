@@ -41,21 +41,32 @@ REQUIREMENT_ID_MAP = {
     "CC_ISK_CAPSTONE": "CC_CAPSTONE",
     "CC_CAPSTONE": "CC_CAPSTONE",
     "AE_CORE": "AE_CORE",
+    "AE_ELECTIVE": "AE_ELECTIVES_MIN_3",
     "AE_ELECTIVES": "AE_ELECTIVES_MIN_3",
+    "IND4_CORE": "IND4_CORE",
     "IND4_CORE_CONTROL": "IND4_CORE",
+    "IND4_CORE_AUTOMATION": "IND4_CORE",
     "IND4_CORE_DATA": "IND4_CORE",
+    "IND4_ELECTIVE": "IND4_ELECTIVES_MIN_3",
     "IND4_ELECTIVES": "IND4_ELECTIVES_MIN_3",
     "IOT_CORE": "IOT_CORE",
+    "IOT_ELECTIVE": "IOT_ELECTIVES_MIN_2_OR_8U",
     "IOT_ELECTIVES": "IOT_ELECTIVES_MIN_2_OR_8U",
+    "IOT_PROJECT": "IOT_ELECTIVES_MIN_2_OR_8U",
+    "IOT_PROJECT_OPTIONS": "IOT_ELECTIVES_MIN_2_OR_8U",
     "MQM_CORE": "MQM_CORE",
+    "MQM_ELECTIVE": "MQM_ELECTIVES_MIN_3_OR_12U",
     "MQM_ELECTIVES": "MQM_ELECTIVES_MIN_3_OR_12U",
     "MQM_PROJECT_OPTIONS": "MQM_ELECTIVES_MIN_3_OR_12U",
+    "RBT_BASKET": "RBT_PATH1_CAPSTONE",
     "RBT_ELECTIVES_12_UNITS": "RBT_PATH1_CAPSTONE",
     "RBT_ELECTIVES_20_UNITS": "RBT_PATH2_COURSEWORK",
     "RBT_CAPSTONE": "RBT_PATH1_CAPSTONE",
     "SET_CORE": "SET_CORE",
+    "SET_ELECTIVE": "SET_ELECTIVES_MIN_2",
     "SET_ELECTIVES": "SET_ELECTIVES_MIN_2",
     "SPT_CORE": "SPT_CORE",
+    "SPT_ELECTIVE": "SPT_ELECTIVES_MIN_2",
     "SPT_ELECTIVES": "SPT_ELECTIVES_MIN_2",
     "SPT_SATELLITE_CAPSTONE": "SPT_CORE",
     "SPT_IDP_REPLACEMENT_ELECTIVES": "SPT_IDP_PATH",
@@ -70,6 +81,8 @@ CONSTRAINT_ID_MAP = {
     "TE_EXCLUDE_NON_EE": "TE_EXCLUDE_NON_EE",
     "TC_EFFECTIVE_DATE_EE3033": "TC_EFFECTIVE_DATE_EE3033",
     "ALIAS_DUPLICATE_CREDIT": "ALIAS_DUPLICATE_CREDIT",
+    "MANUAL_ALLOC_INELIGIBLE": "MANUAL_ALLOC_INELIGIBLE",
+    "CDE4301_NO_SPEC_IF_IDP": "CDE4301_NO_SPEC_IF_IDP",
 }
 
 SPECIALISATION_FAILURE_MAP = {
@@ -144,6 +157,23 @@ def _contract_requirements(config: DegreeAuditConfig, result: AuditResult) -> li
                 "source_ref": _source_ref(config, internal_id),
             }
         )
+    existing = {row["id"] for row in rows}
+    for specialisation in result.specialisation_results:
+        for internal_id in specialisation.failed_requirements:
+            mapped_id = map_requirement_id(internal_id)
+            if mapped_id in existing:
+                continue
+            rows.append(
+                {
+                    "id": mapped_id,
+                    "status": "FAIL",
+                    "units_done": units_by_requirement.get(mapped_id, 0),
+                    "units_required": _units_required(config, internal_id, mapped_id),
+                    "satisfied_by": sorted(courses_by_requirement.get(mapped_id, [])),
+                    "source_ref": _source_ref(config, internal_id),
+                }
+            )
+            existing.add(mapped_id)
     return rows
 
 

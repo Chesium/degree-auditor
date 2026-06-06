@@ -64,10 +64,20 @@ specialisations:
           section: Internet of Things
           quote: Internet of Things Specialisation
           notes: Project options are modeled for later capstone handling.
+      - id: IOT_PROJECT_EQUIVALENT
+        description: IoT core plus an 8-unit IoT-tagged project or equivalent option.
+        requirement_ids:
+          - IOT_CORE
+          - IOT_PROJECT_OPTIONS
+        source_ref:
+          document: ECE_Specialisations_AY2025_7July2025.pdf
+          page: null
+          section: Internet of Things
+          quote: Choose at least 2 electives, or total 8 Units equivalent
+          notes: Added in Pass 14 so a single 8-unit IoT-tagged project can satisfy the elective-equivalent path.
     source_ref:
       document: ECE_Specialisations_AY2025_7July2025.pdf
       page: null
       section: Internet of Things
       quote: Internet of Things (IoT) Specialisation
       notes: Source page should be refined from PDF table extraction.
-
