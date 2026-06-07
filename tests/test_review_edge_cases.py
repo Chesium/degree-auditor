@@ -21,10 +21,7 @@ INVALID_INPUT_CONSTRAINTS = {
 }
 
 
-UNSUPPORTED_CASES = {
-    "spt_idp_path_inactive_without_flag_fail": "SPT IDP inactive-path public IDs are not aligned yet",
-    "spt_idp_eg4301_units_not_counted": "SPT EG4301 exclusion is not implemented",
-}
+UNSUPPORTED_CASES = {}
 
 
 def test_review_edge_cases_schema_basics() -> None:

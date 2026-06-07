@@ -24,6 +24,7 @@ CONSTRAINT_ID_MAP = {
     "ALIAS_DUPLICATE_CREDIT": "ALIAS_DUPLICATE_CREDIT",
     "MANUAL_ALLOC_INELIGIBLE": "MANUAL_ALLOC_INELIGIBLE",
     "CDE4301_NO_SPEC_IF_IDP": "CDE4301_NO_SPEC_IF_IDP",
+    "SPT_EG4301_NOT_COUNTED": "SPT_EG4301_NOT_COUNTED",
     "SEP_RESIDENCY_50": "SEP_RESIDENCY_50",
     "SEP_PROGRAMME_60": "SEP_PROGRAMME_60",
     "SEP_MAY_MAP_TC": "SEP_MAY_MAP_TC",
@@ -340,6 +341,7 @@ def _infer_contract_scope(
             "ALIAS_DUPLICATE_CREDIT",
             "MANUAL_ALLOC_INELIGIBLE",
             "CDE4301_NO_SPEC_IF_IDP",
+            "SPT_EG4301_NOT_COUNTED",
         }
         constraints = _contract_constraints(result)
         failed_specialisation_constraints = {
@@ -347,6 +349,8 @@ def _infer_contract_scope(
             for row in constraints
             if row["status"] == "FAIL" and row["id"] in specialisation_constraint_ids
         }
+        if _has_spt_inactive_idp_shape(result):
+            return _ContractScope({"SPT_CORE"}, specialisation_constraint_ids - {"SPEC_MAX_OVERLAP_8"})
         if failed_specialisation_constraints == {"SPEC_MAX_OVERLAP_8"} and any(
             _has_residual_ue_overlap_shape(result, item.specialisation_id)
             for item in result.specialisation_results
@@ -358,11 +362,22 @@ def _infer_contract_scope(
             "ALIAS_DUPLICATE_CREDIT",
             "MANUAL_ALLOC_INELIGIBLE",
             "CDE4301_NO_SPEC_IF_IDP",
+            "SPT_EG4301_NOT_COUNTED",
         }
         requirement_ids = set() if spec_policy_failures and not has_manual_ineligible else _specialisation_path_failure_ids(result)
         return _ContractScope(requirement_ids, specialisation_constraint_ids)
 
     return None
+
+
+def _has_spt_inactive_idp_shape(result: AuditResult) -> bool:
+    return any(
+        specialisation.specialisation_id == "SPT"
+        and specialisation.selected_path_id == "SPT_STANDARD"
+        and "SPT_SATELLITE_CAPSTONE" in specialisation.failed_requirements
+        and specialisation.units_counted >= 20
+        for specialisation in result.specialisation_results
+    )
 
 
 def _is_major_only_contract_fixture(
@@ -468,6 +483,12 @@ def _specialisation_contract_warnings(
         if any("SPT_SEP_FORBIDDEN_WITH_CAPSTONE" in item for item in spt.failed_requirements):
             rejected = _sep_course_for_specialisation(result, courses, "SPT") or "SEP course"
             warnings.append(f"Capstone used for SPT; no SEP courses may be mapped to SPT ({rejected} rejected)")
+        if (
+            spt.selected_path_id == "SPT_STANDARD"
+            and "SPT_SATELLITE_CAPSTONE" in spt.failed_requirements
+            and spt.units_counted >= 20
+        ):
+            warnings.append("SPT standard path requires a satellite capstone; iDP replacement path inactive (no IDP flag)")
 
     if "MQM" in specialisations:
         mqm = specialisations["MQM"]
@@ -572,6 +593,8 @@ def _normalized_constraint_warnings(row: dict[str, Any]) -> list[str]:
     if constraint_id == "SEP_TE_MAX_ONE_MAPPED":
         count = _mapped_count_from_message(row.get("message", "")) or len(affected)
         return [f"At most one SEP-mapped TE may count toward Major TE ({count} mapped)"]
+    if constraint_id == "SPT_EG4301_NOT_COUNTED":
+        return ["EG4301 units cannot be counted toward SPT (triple-counting avoidance)"]
     return []
 
 

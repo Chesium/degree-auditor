@@ -225,6 +225,7 @@ def _constraint_warnings(failed_constraints: list) -> list[str]:
         "ALIAS_DUPLICATE_CREDIT",
         "MANUAL_ALLOC_INELIGIBLE",
         "CDE4301_NO_SPEC_IF_IDP",
+        "SPT_EG4301_NOT_COUNTED",
         "SEP_RESIDENCY_50",
         "SEP_PROGRAMME_60",
         "SEP_MAY_MAP_TC",

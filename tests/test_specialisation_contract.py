@@ -54,6 +54,22 @@ def test_specialisation_contract_sep_budget_and_reuse(tmp_path: Path) -> None:
     assert "SEP course EE4409 mapped to more than one Specialisation (Robotics, IoT)" in sep_reuse["warnings"]
 
 
+def test_spt_idp_contract_gating_and_eg4301_exclusion(tmp_path: Path) -> None:
+    inactive = _run_case(tmp_path, "spt_idp_path_inactive_without_flag_fail")
+    eg4301 = _run_case(tmp_path, "spt_idp_eg4301_units_not_counted")
+
+    assert inactive["pass"] is False
+    assert "SPT_CORE" in inactive["failed_requirements"]
+    assert (
+        "SPT standard path requires a satellite capstone; iDP replacement path inactive (no IDP flag)"
+        in inactive["warnings"]
+    )
+    assert eg4301["pass"] is False
+    assert "SPT_EG4301_NOT_COUNTED" in eg4301["failed_constraints"]
+    assert not eg4301["failed_requirements"]
+    assert "EG4301 units cannot be counted toward SPT (triple-counting avoidance)" in eg4301["warnings"]
+
+
 def _run_case(tmp_path: Path, case_id: str) -> dict:
     data = yaml.safe_load(EDGE_CASES.read_text(encoding="utf-8"))
     defaults = data["meta"]["defaults"]

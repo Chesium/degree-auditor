@@ -24,6 +24,7 @@ SUPPORTED_SPECIALISATIONS = {"AE", "IND4", "SET", "MQM", "RBT", "SPT", "IOT"}
 SEP_ONLY_SPECIALISATIONS: set[str] = set()
 CAPSTONE_LOCK_SPECIALISATIONS = {"SPT", "RBT", "IOT", "MQM"}
 CAPSTONE_CODES = {"EE4002D", "EE4002R"}
+SPT_EG4301_CODE = "EG4301"
 COMMON_CURRICULUM_CAPSTONE_REQUIREMENT_ID = "CDE_CAPSTONE"
 COMMON_CURRICULUM_CAPSTONE_REQUIREMENT_IDS = {
     COMMON_CURRICULUM_CAPSTONE_REQUIREMENT_ID,
@@ -90,7 +91,7 @@ def infer_specialisation_allocations(
     courses: list[CourseAttempt],
     existing_allocations: list[Allocation],
 ) -> tuple[list[Allocation], list[str]]:
-    """Infer narrow transcript-only Robotics allocations for public review fixtures."""
+    """Infer narrow transcript-only specialisation allocations for public review fixtures."""
     requirement_to_specialisation = _requirement_to_specialisation(config)
     if any(
         requirement_to_specialisation.get(allocation.requirement_id)
@@ -98,6 +99,10 @@ def infer_specialisation_allocations(
         if allocation.allocation_role != AllocationRole.ignored
     ):
         return [], []
+
+    spt_allocations = _infer_spt_allocations(config, courses)
+    if spt_allocations:
+        return spt_allocations, []
 
     rbt_pool = config.pool_by_id("RBT_ELECTIVE_POOL")
     if rbt_pool is None:
@@ -144,6 +149,49 @@ def infer_specialisation_allocations(
     return [], []
 
 
+def _infer_spt_allocations(config: DegreeAuditConfig, courses: list[CourseAttempt]) -> list[Allocation]:
+    course_codes = {canonical_code(config, course.effective_code) for course in courses}
+    if "EE3105" not in course_codes:
+        return []
+    pool = config.pool_by_id("SPT_ELECTIVE_POOL")
+    if pool is None:
+        return []
+
+    allocations = [
+        Allocation(course_code="EE3105", requirement_id="SPT_CORE", units=4, manual=False)
+    ]
+    elective_allocations: list[Allocation] = []
+    capstone_allocations: list[Allocation] = []
+    for course in courses:
+        code = canonical_code(config, course.effective_code)
+        if code == "EE3105":
+            continue
+        if code in CAPSTONE_CODES and "satellite" in {tag.lower() for tag in course.topic_tags}:
+            capstone_allocations.append(
+                Allocation(
+                    course_code=course.course_code,
+                    requirement_id="SPT_SATELLITE_CAPSTONE",
+                    units=course.units,
+                    manual=False,
+                )
+            )
+        elif course_in_pool(code, pool):
+            elective_allocations.append(
+                Allocation(
+                    course_code=course.course_code,
+                    requirement_id="SPT_ELECTIVES",
+                    units=course.units,
+                    manual=False,
+                )
+            )
+
+    if capstone_allocations and len(elective_allocations) >= 2:
+        return allocations + capstone_allocations[:1] + elective_allocations[:2]
+    if len(elective_allocations) >= 4:
+        return allocations + elective_allocations[:4]
+    return []
+
+
 def evaluate_specialisation_allocation_constraints(
     config: DegreeAuditConfig,
     courses: list[CourseAttempt],
@@ -151,6 +199,7 @@ def evaluate_specialisation_allocation_constraints(
 ) -> list[ConstraintResult]:
     results: list[ConstraintResult] = []
     results.extend(_evaluate_manual_specialisation_eligibility(config, courses, allocations))
+    results.extend(_evaluate_spt_eg4301_not_counted(config, allocations))
     results.extend(_evaluate_cde4301_idp_conflict(config, allocations))
     results.extend(_evaluate_cross_specialisation_capstone_conflict(config, courses, allocations))
     return results
@@ -365,11 +414,15 @@ def _evaluate_requirement(
 
     if requirement.requirement_type == "choose_count":
         count = len(_matching_pool_allocations(config, requirement, requirement_allocations, courses))
+        if requirement.id == "SPT_ELECTIVES":
+            count = max(count, len(_matching_transcript_pool_courses(config, requirement, courses)))
         minimum = requirement.min_count or 1
         return count >= minimum, f"{requirement.id} has {count} course(s); requires {minimum}."
 
     if requirement.requirement_type == "choose_units":
         units = sum(_matching_pool_allocations(config, requirement, requirement_allocations, courses).values())
+        if requirement.id == "SPT_IDP_REPLACEMENT_ELECTIVES":
+            units = max(units, sum(_matching_transcript_pool_courses(config, requirement, courses).values()))
         required_units = requirement.units or 0
         return units >= required_units, f"{requirement.id} has {units} unit(s); requires {required_units}."
 
@@ -410,6 +463,26 @@ def _matching_pool_allocations(
     return matched
 
 
+def _matching_transcript_pool_courses(
+    config: DegreeAuditConfig,
+    requirement: Requirement,
+    courses: list[CourseAttempt],
+) -> dict[str, int]:
+    if requirement.pool_id is None:
+        return {}
+    pool = config.pool_by_id(requirement.pool_id)
+    if pool is None:
+        return {}
+    matched: dict[str, int] = {}
+    for course in courses:
+        code = canonical_code(config, course.effective_code)
+        if code == SPT_EG4301_CODE:
+            continue
+        if course_in_pool(code, pool):
+            matched[code] = max(matched.get(code, 0), course.units)
+    return matched
+
+
 def _specialisation_units(
     config: DegreeAuditConfig,
     specialisation: Specialisation,
@@ -419,7 +492,11 @@ def _specialisation_units(
     requirement_ids = _specialisation_requirement_ids(specialisation)
     units_by_course: dict[str, int] = {}
     for allocation in allocations:
-        if allocation.requirement_id in requirement_ids and allocation.allocation_role != AllocationRole.ignored:
+        if (
+            allocation.requirement_id in requirement_ids
+            and allocation.allocation_role != AllocationRole.ignored
+            and not _is_spt_eg4301_allocation(specialisation, allocation)
+        ):
             code = _known_canonical_allocation_code(allocation.course_code)
             units_by_course[code] = max(units_by_course.get(code, 0), allocation.units)
     for requirement_id in specialisation.requirement_ids:
@@ -431,6 +508,19 @@ def _specialisation_units(
             code = canonical_code(config, course.effective_code)
             if code in required_codes:
                 units_by_course[code] = max(units_by_course.get(code, 0), course.units)
+    if specialisation.id == "SPT" and not any(
+        allocation.requirement_id in {"SPT_ELECTIVES", "SPT_IDP_REPLACEMENT_ELECTIVES", "SPT_ELECTIVE"}
+        and allocation.allocation_role != AllocationRole.ignored
+        for allocation in allocations
+    ):
+        pool = config.pool_by_id("SPT_ELECTIVE_POOL")
+        if pool is not None:
+            for course in courses:
+                code = canonical_code(config, course.effective_code)
+                if code == SPT_EG4301_CODE:
+                    continue
+                if course_in_pool(code, pool):
+                    units_by_course[code] = max(units_by_course.get(code, 0), course.units)
     return sum(units_by_course.values())
 
 
@@ -442,7 +532,11 @@ def _overlap_units(config: DegreeAuditConfig, specialisation: Specialisation, al
         code = _known_canonical_allocation_code(allocation.course_code)
         if allocation.allocation_role != AllocationRole.ignored:
             by_course[code].append(allocation)
-        if allocation.requirement_id in spec_requirement_ids and allocation.allocation_role != AllocationRole.ignored:
+        if (
+            allocation.requirement_id in spec_requirement_ids
+            and allocation.allocation_role != AllocationRole.ignored
+            and not _is_spt_eg4301_allocation(specialisation, allocation)
+        ):
             units_by_course[code] = max(units_by_course.get(code, 0), allocation.units)
 
     overlap = 0
@@ -457,6 +551,10 @@ def _overlap_units(config: DegreeAuditConfig, specialisation: Specialisation, al
         if other_allocations:
             overlap += units
     return overlap
+
+
+def _is_spt_eg4301_allocation(specialisation: Specialisation, allocation: Allocation) -> bool:
+    return specialisation.id == "SPT" and allocation.course_code == SPT_EG4301_CODE
 
 
 def _capstone_lock(
@@ -804,6 +902,33 @@ def _evaluate_manual_specialisation_eligibility(
             False,
             "; ".join(messages),
             affected_courses=sorted({course_code for course_code, _ in failures}),
+        )
+    ]
+
+
+def _evaluate_spt_eg4301_not_counted(
+    config: DegreeAuditConfig,
+    allocations: list[Allocation],
+) -> list[ConstraintResult]:
+    constraint = config.constraint_by_id("SPT_EG4301_NOT_COUNTED")
+    requirement_to_specialisation = _requirement_to_specialisation(config)
+    conflicts = sorted(
+        {
+            allocation.course_code
+            for allocation in allocations
+            if allocation.course_code == SPT_EG4301_CODE
+            and requirement_to_specialisation.get(allocation.requirement_id) == "SPT"
+            and allocation.allocation_role != AllocationRole.ignored
+        }
+    )
+    if not conflicts:
+        return [_constraint_result(constraint, True, "EG4301 is not counted toward SPT.")]
+    return [
+        _constraint_result(
+            constraint,
+            False,
+            "EG4301 units cannot be counted toward SPT (triple-counting avoidance)",
+            affected_courses=conflicts,
         )
     ]
 

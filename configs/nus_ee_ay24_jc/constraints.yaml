@@ -205,6 +205,15 @@ constraints:
       section: Ambiguity A-16
       quote: CDE4301/CDE4301A cannot be used to fulfil a specialisation if also used to fulfil the Second Major in Innovation & Design.
       notes: Distinct from the EE4002D/R capstone overlap lock.
+  - id: SPT_EG4301_NOT_COUNTED
+    description: EG4301 units must not count toward the Space Technology Specialisation.
+    constraint_type: spt_eg4301_not_counted
+    source_ref:
+      document: ECE_Specialisations_AY2025_7July2025.pdf
+      page: 8
+      section: Space Technology
+      quote: the Units from the FYP course will not be counted towards this Specialisation to avoid triple counting
+      notes: Applies to iDP students where EG4301 may be topic-related but is excluded from SPT units.
   - id: SPEC_OVERLAP_SINGLE_INSTANCE
     description: A single EE4002D or EE4002R capstone instance cannot fulfil multiple capstone-sensitive specialisations.
     constraint_type: spec_overlap_single_instance

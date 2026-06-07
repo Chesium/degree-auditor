@@ -494,6 +494,13 @@ def _manual_allocation_allowed(
         if code in {"EE2026", "EE2028"}:
             return True, ""
         return False, f"{allocation.course_code} is not eligible for the EE2026/EE2028 major choice"
+    if allocation.course_code == "EG4301" and allocation.requirement_id in {
+        "SPT_CORE",
+        "SPT_SATELLITE_CAPSTONE",
+        "SPT_ELECTIVES",
+        "SPT_IDP_REPLACEMENT_ELECTIVES",
+    }:
+        return True, ""
     if allocation.requirement_id == "SPT_CORE" and code in {"EE4002D", "EE4002R"}:
         return True, ""
 

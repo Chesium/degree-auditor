@@ -96,6 +96,26 @@ def test_spt_idp_replacement_requires_flag() -> None:
     assert _specialisation(with_idp, "SPT").selected_path_id == "SPT_IDP_REPLACEMENT"
 
 
+def test_spt_eg4301_units_do_not_count() -> None:
+    result = _audit_with(
+        _base_passing_allocations()
+        + [
+            Allocation(course_code="EG4301", requirement_id="SPT_CORE", units=12),
+        ],
+        extra_courses=["EE3105", "EE3104C", "EE3131C", "EE4101", "EE4115"],
+        extra_attempts=[CourseAttempt(course_code="EG4301", units=12, topic_tags=["satellite"])],
+        student_flags=["IDP"],
+    )
+
+    spt = _specialisation(result, "SPT")
+    # The base transcript already contains EE3331C, an SPT elective; EG4301's 12 units are not added.
+    assert spt.units_counted == 24
+    assert any(
+        item.constraint_id == "SPT_EG4301_NOT_COUNTED" and not item.passed
+        for item in result.constraint_results
+    )
+
+
 def _audit_with(
     allocations: list[Allocation],
     extra_courses: list[str] | None = None,
