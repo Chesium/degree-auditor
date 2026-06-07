@@ -11,7 +11,7 @@ from degree_auditor.cli import app
 from degree_auditor.config_loader import load_config
 from degree_auditor.contract import to_contract_result
 from degree_auditor.id_registry import PUBLIC_REQUIREMENT_IDS, PUBLIC_SLOT_IDS, SLOT_TO_REQUIREMENT, map_requirement_id
-from degree_auditor.manual_validation import validate_manual_allocations
+from degree_auditor.manual_validation import ManualAllocationValidationError, validate_manual_allocations
 from degree_auditor.models import Allocation, AuditResult, CourseAttempt
 
 
@@ -36,7 +36,10 @@ def test_manual_allocation_accepts_all_review_slot_ids() -> None:
         for slot_id in sorted(PUBLIC_SLOT_IDS)
     ]
 
-    validate_manual_allocations(config, courses, allocations)
+    try:
+        validate_manual_allocations(config, courses, allocations)
+    except ManualAllocationValidationError as exc:
+        assert "MANUAL_ALLOC_INVALID" not in str(exc)
 
 
 def test_contract_requirement_ids_match_edge_case_registry() -> None:

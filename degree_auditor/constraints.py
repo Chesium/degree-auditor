@@ -452,13 +452,7 @@ def _evaluate_manual_allocation_eligibility(
     allocations: list[Allocation],
 ) -> list[ConstraintResult]:
     constraint = _constraint(config, "MANUAL_ALLOC_INELIGIBLE")
-    failures: list[tuple[str, str]] = []
-    for allocation in allocations:
-        if allocation.allocation_role == "ignored" or not allocation.manual:
-            continue
-        allowed, message = _manual_allocation_allowed(config, courses, allocation, allocations)
-        if not allowed:
-            failures.append((allocation.course_code, message))
+    failures = manual_allocation_eligibility_errors(config, courses, allocations)
     if not failures:
         return [_result(constraint, True, "Manual allocations match requirement eligibility.")]
     return [
@@ -469,6 +463,21 @@ def _evaluate_manual_allocation_eligibility(
             affected_courses=sorted({course_code for course_code, _ in failures}),
         )
     ]
+
+
+def manual_allocation_eligibility_errors(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[tuple[str, str]]:
+    failures: list[tuple[str, str]] = []
+    for allocation in allocations:
+        if allocation.allocation_role == "ignored" or not allocation.manual:
+            continue
+        allowed, message = _manual_allocation_allowed(config, courses, allocation, allocations)
+        if not allowed:
+            failures.append((allocation.course_code, message))
+    return failures
 
 
 def _manual_allocation_allowed(

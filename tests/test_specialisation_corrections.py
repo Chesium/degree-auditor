@@ -53,12 +53,11 @@ def test_robotics_me3243_alias_passes_review_contract(tmp_path: Path) -> None:
 
 
 def test_set_rejects_emerging_tech_elective(tmp_path: Path) -> None:
-    payload = _run_review_case(tmp_path, "emerging_tech_not_set_elective_fail")
+    result = _run_review_case_raw(tmp_path, "emerging_tech_not_set_elective_fail")
 
-    assert payload["pass"] is False
-    assert "SET_ELECTIVES_MIN_2" in payload["failed_requirements"]
-    assert "MANUAL_ALLOC_INELIGIBLE" in payload["failed_constraints"]
-    assert any("EE4032 is not a SET elective" in warning for warning in payload["warnings"])
+    assert result.exit_code == 1
+    assert "MANUAL_ALLOC_INELIGIBLE" in result.stderr
+    assert "EE4032 is not a SET elective" in result.stderr
 
 
 def test_cde4301_idp_second_major_conflict(tmp_path: Path) -> None:
@@ -134,6 +133,13 @@ def _specialisation(result, specialisation_id: str):
 
 
 def _run_review_case(tmp_path: Path, case_id: str) -> dict:
+    result = _run_review_case_raw(tmp_path, case_id)
+
+    assert result.exit_code in {0, 2}, result.output
+    return json.loads(result.output)
+
+
+def _run_review_case_raw(tmp_path: Path, case_id: str):
     data = yaml.safe_load(EDGE_CASES.read_text(encoding="utf-8"))
     defaults = data["meta"]["defaults"]
     case = next(item for item in data["cases"] if item["id"] == case_id)
@@ -156,7 +162,4 @@ def _run_review_case(tmp_path: Path, case_id: str) -> dict:
         allocation_path.write_text(yaml.safe_dump(case["manual_allocation"], sort_keys=False), encoding="utf-8")
         args.extend(["--allocation", str(allocation_path)])
 
-    result = CliRunner().invoke(app, args)
-
-    assert result.exit_code in {0, 2}, result.output
-    return json.loads(result.output)
+    return CliRunner().invoke(app, args)

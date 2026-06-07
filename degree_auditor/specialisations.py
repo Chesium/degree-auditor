@@ -883,16 +883,7 @@ def _evaluate_manual_specialisation_eligibility(
     allocations: list[Allocation],
 ) -> list[ConstraintResult]:
     constraint = config.constraint_by_id("MANUAL_ALLOC_INELIGIBLE")
-    failures: list[tuple[str, str]] = []
-    for allocation in allocations:
-        if allocation.allocation_role == AllocationRole.ignored:
-            continue
-        requirement_ids = _resolved_requirement_ids(allocation.requirement_id)
-        code = canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
-        for requirement_id in requirement_ids:
-            message = MANUAL_INELIGIBLE_SPECIALISATION_COURSES.get(requirement_id, {}).get(code)
-            if message:
-                failures.append((allocation.course_code, message))
+    failures = manual_specialisation_eligibility_errors(config, courses, allocations)
     if not failures:
         return [_constraint_result(constraint, True, "Manual specialisation allocations match configured baskets.")]
     messages = [message for _, message in failures]
@@ -904,6 +895,24 @@ def _evaluate_manual_specialisation_eligibility(
             affected_courses=sorted({course_code for course_code, _ in failures}),
         )
     ]
+
+
+def manual_specialisation_eligibility_errors(
+    config: DegreeAuditConfig,
+    courses: list[CourseAttempt],
+    allocations: list[Allocation],
+) -> list[tuple[str, str]]:
+    failures: list[tuple[str, str]] = []
+    for allocation in allocations:
+        if allocation.allocation_role == AllocationRole.ignored or not allocation.manual:
+            continue
+        requirement_ids = _resolved_requirement_ids(allocation.requirement_id)
+        code = canonical_code(config, _effective_code_for_allocation(config, courses, allocation))
+        for requirement_id in requirement_ids:
+            message = MANUAL_INELIGIBLE_SPECIALISATION_COURSES.get(requirement_id, {}).get(code)
+            if message:
+                failures.append((allocation.course_code, message))
+    return failures
 
 
 def _evaluate_spt_eg4301_not_counted(

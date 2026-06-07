@@ -10,6 +10,9 @@ import yaml
 from typer.testing import CliRunner
 
 from degree_auditor.cli import app
+from degree_auditor.config_loader import load_config
+from degree_auditor.contract import map_constraint_id
+from degree_auditor.id_registry import PUBLIC_SLOT_IDS, map_requirement_id
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,11 +20,17 @@ EDGE_CASES = ROOT / "review" / "edge_cases.yaml"
 CONFIG = ROOT / "configs" / "nus_ee_ay24_jc"
 INVALID_INPUT_CONSTRAINTS = {
     "CONFIG_MERGE_CONFLICT",
+    "MANUAL_ALLOC_INELIGIBLE",
     "MANUAL_ALLOC_INVALID",
 }
 
 
 UNSUPPORTED_CASES = {}
+
+
+def test_no_unsupported_edge_cases_remain() -> None:
+    assert UNSUPPORTED_CASES == {}
+    assert len(_load_edge_cases()["cases"]) == 65
 
 
 def test_review_edge_cases_schema_basics() -> None:
@@ -142,6 +151,12 @@ def test_review_edge_cases_contract_subset_semantics(tmp_path: Path, case: dict[
         assert expected_constraints & INVALID_INPUT_CONSTRAINTS, result.output
         for constraint_id in expected_constraints:
             assert constraint_id in INVALID_INPUT_CONSTRAINTS
+            assert constraint_id in result.stderr or constraint_id == "CONFIG_MERGE_CONFLICT"
+        for expected_warning in case["expected_warnings"]:
+            if "CONFIG_MERGE_CONFLICT" in expected_constraints:
+                assert "Conflicting" in result.stderr and "override: true" in result.stderr
+                continue
+            assert expected_warning in result.stderr, case["id"]
         return
 
     assert result.exit_code in {0, 2}, result.output
@@ -151,3 +166,103 @@ def test_review_edge_cases_contract_subset_semantics(tmp_path: Path, case: dict[
     assert expected_constraints <= set(payload["failed_constraints"]), case["id"]
     for expected_warning in case["expected_warnings"]:
         assert any(expected_warning in warning for warning in payload["warnings"]), case["id"]
+
+
+def test_edge_case_vocabulary_preflight(tmp_path: Path) -> None:
+    data = _load_edge_cases()
+    assert PUBLIC_SLOT_IDS == set(data["meta"]["slot_to_requirement"])
+
+    requirements = CliRunner().invoke(app, ["list-requirements", "--config", str(CONFIG)])
+    constraints = CliRunner().invoke(app, ["list-constraints", "--config", str(CONFIG)])
+    assert requirements.exit_code == 0
+    assert constraints.exit_code == 0
+
+    loaded = load_config([CONFIG])
+    public_requirement_ids = {map_requirement_id(requirement.id) for requirement in loaded.requirements}
+    reported_only = set(data["meta"].get("reported_only_requirements", []))
+    for requirement_id in set(data["meta"]["slot_to_requirement"].values()):
+        assert requirement_id in public_requirement_ids or requirement_id in reported_only, requirement_id
+
+    public_constraint_ids = {constraint.id for constraint in loaded.constraints}
+    public_constraint_ids.update(map_constraint_id(constraint.id) for constraint in loaded.constraints)
+    contract_only_constraints = {
+        "CONFIG_MERGE_CONFLICT",
+        "MANUAL_ALLOC_INVALID",
+        "SEP_CAPSTONE_FORBIDS_SEP",
+        "SEP_SPEC_MAX_8",
+        "SEP_SPEC_NO_REUSE",
+        "SPEC_MAX_OVERLAP_8",
+        "TC_NOT_TE",
+        "TE_EXCLUDE_EE3031",
+        "TE_EXCLUDE_EE3033",
+    }
+    for constraint_id in data["meta"]["constraint_ids_used"]:
+        assert constraint_id in public_constraint_ids or constraint_id in contract_only_constraints, constraint_id
+
+    trivial = _materialize_case(tmp_path, next(case for case in data["cases"] if case["id"] == "major_core_pass_basic"))
+    result = _invoke_case(trivial, "json")
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    for key in {
+        "pass",
+        "cohort",
+        "total_units",
+        "requirements",
+        "failed_requirements",
+        "constraints",
+        "failed_constraints",
+        "warnings",
+        "specialisations",
+        "allocations",
+    }:
+        assert key in payload
+
+
+def test_all_edge_cases_json_yaml_deterministic(tmp_path: Path) -> None:
+    for case in _load_edge_cases()["cases"]:
+        materialized = _materialize_case(tmp_path, case)
+        first_json = _invoke_case(materialized, "json")
+        second_json = _invoke_case(materialized, "json")
+        first_yaml = _invoke_case(materialized, "yaml")
+        second_yaml = _invoke_case(materialized, "yaml")
+
+        assert first_json.exit_code == second_json.exit_code, case["id"]
+        assert first_json.output == second_json.output, case["id"]
+        assert first_json.stderr == second_json.stderr, case["id"]
+        assert first_yaml.exit_code == second_yaml.exit_code, case["id"]
+        assert first_yaml.output == second_yaml.output, case["id"]
+        assert first_yaml.stderr == second_yaml.stderr, case["id"]
+
+
+def test_all_edge_cases_text_smoke_stable_headings(tmp_path: Path) -> None:
+    for case in _load_edge_cases()["cases"]:
+        result = _invoke_case(_materialize_case(tmp_path, case), "text")
+        assert result.exit_code in {0, 1, 2}, case["id"]
+        if result.exit_code == 1:
+            assert "Invalid input:" in result.stderr, case["id"]
+        else:
+            assert "Overall" in result.output, case["id"]
+            assert "Failed Constraints" in result.output, case["id"]
+
+
+def _materialize_case(tmp_path: Path, case: dict[str, Any]) -> dict[str, Any]:
+    data = _load_edge_cases()
+    defaults = data["meta"]["defaults"]
+    case_dir = tmp_path / case["id"]
+    case_dir.mkdir(exist_ok=True)
+    return {
+        "case": case,
+        "transcript": _write_transcript(case_dir, case, defaults),
+        "allocation": _write_manual_allocation(case_dir, case),
+        "overlays": _write_config_overlays(case_dir, case),
+    }
+
+
+def _invoke_case(materialized: dict[str, Any], output_format: str):
+    args = ["audit", "--config", str(CONFIG)]
+    for overlay_path in materialized["overlays"]:
+        args.extend(["--config", str(overlay_path)])
+    args.extend(["--transcript", str(materialized["transcript"]), "--format", output_format])
+    if materialized["allocation"]:
+        args.extend(["--allocation", str(materialized["allocation"])])
+    return CliRunner().invoke(app, args)

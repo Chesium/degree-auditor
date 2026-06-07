@@ -91,6 +91,8 @@ meta:
     - DEG_TOTAL_160
     - CC_CDE_60
     - MAJOR_60
+    - MAJ_EE2027
+    - IDP_2ND_MAJOR
 
   # ---- Constraint ids exercised by these cases (full definitions in rule_inventory.md) ----
   constraint_ids_used:
@@ -1693,4 +1695,3 @@ cases:
       - "CP3200 (ATAP/SIP) is CEG-only and not valid for the EE-major internship"
     source_refs:
       - {document: IAW, page: null, quote: "CP3880 / CP3200 / CP3202 ATAP / SIP Only applicable to CEG students"}
-
