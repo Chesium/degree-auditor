@@ -494,6 +494,8 @@ def _manual_allocation_allowed(
         if code in {"EE2026", "EE2028"}:
             return True, ""
         return False, f"{allocation.course_code} is not eligible for the EE2026/EE2028 major choice"
+    if allocation.requirement_id == "SPT_CORE" and code in {"EE4002D", "EE4002R"}:
+        return True, ""
 
     requirement = config.requirement_by_id(allocation.requirement_id)
     if requirement is None:

@@ -42,6 +42,7 @@ REQUIREMENT_SLOT_ALIASES = {
     "MQM_ELECTIVE": {"MQM_ELECTIVES"},
     "RBT_BASKET": {"RBT_ELECTIVES_12_UNITS", "RBT_ELECTIVES_20_UNITS"},
     "SET_ELECTIVE": {"SET_ELECTIVES"},
+    "SPT_CORE": {"SPT_CORE", "SPT_SATELLITE_CAPSTONE"},
     "SPT_ELECTIVE": {"SPT_ELECTIVES"},
 }
 
@@ -89,7 +90,7 @@ def infer_specialisation_allocations(
     courses: list[CourseAttempt],
     existing_allocations: list[Allocation],
 ) -> tuple[list[Allocation], list[str]]:
-    """Infer narrow transcript-only Robotics basket allocations for public review fixtures."""
+    """Infer narrow transcript-only Robotics allocations for public review fixtures."""
     requirement_to_specialisation = _requirement_to_specialisation(config)
     if any(
         requirement_to_specialisation.get(allocation.requirement_id)
@@ -102,13 +103,24 @@ def infer_specialisation_allocations(
     if rbt_pool is None:
         return [], []
 
-    matches: list[Allocation] = []
+    basket_matches: list[Allocation] = []
     warnings: list[str] = []
+    capstone_matches: list[Allocation] = []
     for course in courses:
         code = canonical_code(config, course.effective_code)
+        if code in CAPSTONE_CODES:
+            capstone_matches.append(
+                Allocation(
+                    course_code=course.course_code,
+                    requirement_id="RBT_CAPSTONE",
+                    units=course.units,
+                    manual=False,
+                )
+            )
+            continue
         if not course_in_pool(code, rbt_pool):
             continue
-        matches.append(
+        basket_matches.append(
             Allocation(
                 course_code=course.course_code,
                 requirement_id="RBT_ELECTIVES_20_UNITS",
@@ -119,8 +131,16 @@ def infer_specialisation_allocations(
         if course.course_code != code:
             warnings.append(f"{course.course_code} resolved to {code} (alias) for Robotics basket")
 
-    if sum(allocation.units for allocation in matches) >= 20:
-        return matches[:5], sorted(set(warnings))
+    basket_units = sum(allocation.units for allocation in basket_matches)
+    if basket_units >= 20:
+        return basket_matches[:5], sorted(set(warnings))
+    if basket_units >= 12 and capstone_matches:
+        capstone_path_allocations = [
+            allocation.model_copy(update={"requirement_id": "RBT_ELECTIVES_12_UNITS"})
+            for allocation in basket_matches[:3]
+        ]
+        capstone_path_allocations.append(capstone_matches[0])
+        return capstone_path_allocations, sorted(set(warnings))
     return [], []
 
 
@@ -227,7 +247,7 @@ def _evaluate_specialisation(
     equivalence_messages = _specialisation_equivalence_messages(config, specialisation, courses, allocations)
 
     failed_requirements = (
-        selected["failed_requirements"]
+        _selected_failed_requirements(specialisation, path_results, selected)
         + [f"{specialisation.id}_GLOBAL_POLICY"] * bool(policy_failures)
         + capstone_failures
         + sep_failures
@@ -245,6 +265,19 @@ def _evaluate_specialisation(
         failed_requirements=failed_requirements,
         messages=selected["messages"] + policy_failures + capstone_messages + sep_messages + equivalence_messages,
     )
+
+
+def _selected_failed_requirements(
+    specialisation: Specialisation,
+    path_results: list[dict[str, object]],
+    selected: dict[str, object],
+) -> list[str]:
+    if specialisation.id == "RBT" and all(result["failed_requirements"] for result in path_results):
+        failures: list[str] = []
+        for result in path_results:
+            failures.extend(result["failed_requirements"])
+        return sorted(dict.fromkeys(str(failure) for failure in failures))
+    return list(selected["failed_requirements"])
 
 
 def _evaluate_sep_only_specialisation(

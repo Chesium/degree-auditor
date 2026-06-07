@@ -22,20 +22,6 @@ INVALID_INPUT_CONSTRAINTS = {
 
 
 UNSUPPORTED_CASES = {
-    "ae_core_overlap_with_tc_within_budget": "review fixture expects scoped specialisation pass; current contract reports whole-audit pass",
-    "robotics_coursework_only_pass": "review fixture expects scoped specialisation pass; current contract reports whole-audit pass",
-    "robotics_capstone_path_pass": "review fixture expects scoped specialisation pass; current contract reports whole-audit pass",
-    "robotics_capstone_untagged_fail": "robotics topic-tag failure ID is not part of the current public contract",
-    "robotics_capstone_overlap_lock_fail": "capstone lock public ID is not emitted for the review slot vocabulary yet",
-    "spt_standard_pass": "review fixture expects scoped specialisation pass; current contract reports whole-audit pass",
-    "spt_capstone_sep_forbidden_fail": "SPT capstone SEP ban public ID is not emitted for the review slot vocabulary yet",
-    "mqm_ee2027_overlap_budget": "review fixture expects scoped MQM pass; current contract reports whole-audit pass",
-    "mqm_overlap_exceeds_budget_fail": "MQM capstone lock public ID is not emitted for the review slot vocabulary yet",
-    "sep_te_one_nus_one_sep_pass": "review fixture expects scoped TE SEP pass; current contract reports whole-audit pass",
-    "sep_specialisation_max_8_units_pass": "review fixture expects scoped specialisation SEP pass; current contract reports whole-audit pass",
-    "sep_specialisation_over_8_units_fail": "SEP max-8 public ID is not emitted for the review slot vocabulary yet",
-    "sep_same_course_two_specialisations_fail": "SEP no-reuse public ID is not emitted for the review slot vocabulary yet",
-    "ue_residual_does_not_consume_overlap": "review fixture expects scoped overlap pass; current contract reports whole-audit pass",
     "spt_idp_path_inactive_without_flag_fail": "SPT IDP inactive-path public IDs are not aligned yet",
     "spt_idp_eg4301_units_not_counted": "SPT EG4301 exclusion is not implemented",
 }

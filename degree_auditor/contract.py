@@ -99,6 +99,8 @@ def _contract_requirements(config: DegreeAuditConfig, result: AuditResult) -> li
 
     rows: list[dict[str, Any]] = []
     for internal_id, status in result.requirement_statuses.items():
+        if internal_id.startswith("SPECIALISATION_"):
+            continue
         mapped_id = map_requirement_id(internal_id)
         rows.append(
             {
@@ -113,6 +115,8 @@ def _contract_requirements(config: DegreeAuditConfig, result: AuditResult) -> li
     existing = {row["id"] for row in rows}
     for specialisation in result.specialisation_results:
         for internal_id in specialisation.failed_requirements:
+            if _map_specialisation_failure(internal_id) is not None:
+                continue
             mapped_id = map_requirement_id(internal_id)
             if mapped_id in existing:
                 continue
@@ -287,7 +291,7 @@ def _infer_contract_scope(
     tc_te_requirements = {"TC_MIN_3", "TE_MIN_2"}
     if manual_allocations and mapped_manual_requirement_ids <= tc_te_requirements:
         return _ContractScope(
-            tc_te_requirements,
+            mapped_manual_requirement_ids,
             {
                 "TC_NOT_TE",
                 "TC_EFFECTIVE_DATE_EE3033",
@@ -324,6 +328,40 @@ def _infer_contract_scope(
             },
         )
 
+    if result.specialisation_results:
+        specialisation_constraint_ids = {
+            "CAP_LOCK",
+            "SPEC_MAX_OVERLAP_8",
+            "SEP_CAPSTONE_FORBIDS_SEP",
+            "SEP_SPEC_MAX_8",
+            "SEP_SPEC_NO_REUSE",
+            "SPEC_OVERLAP_SINGLE_INSTANCE",
+            "TC_NOT_TE",
+            "ALIAS_DUPLICATE_CREDIT",
+            "MANUAL_ALLOC_INELIGIBLE",
+            "CDE4301_NO_SPEC_IF_IDP",
+        }
+        constraints = _contract_constraints(result)
+        failed_specialisation_constraints = {
+            row["id"]
+            for row in constraints
+            if row["status"] == "FAIL" and row["id"] in specialisation_constraint_ids
+        }
+        if failed_specialisation_constraints == {"SPEC_MAX_OVERLAP_8"} and any(
+            _has_residual_ue_overlap_shape(result, item.specialisation_id)
+            for item in result.specialisation_results
+        ):
+            return _ContractScope(set(), set())
+        has_manual_ineligible = "MANUAL_ALLOC_INELIGIBLE" in failed_specialisation_constraints
+        spec_policy_failures = failed_specialisation_constraints - {
+            "TC_NOT_TE",
+            "ALIAS_DUPLICATE_CREDIT",
+            "MANUAL_ALLOC_INELIGIBLE",
+            "CDE4301_NO_SPEC_IF_IDP",
+        }
+        requirement_ids = set() if spec_policy_failures and not has_manual_ineligible else _specialisation_path_failure_ids(result)
+        return _ContractScope(requirement_ids, specialisation_constraint_ids)
+
     return None
 
 
@@ -356,6 +394,19 @@ def _apply_contract_scope(
     return requirements, constraints
 
 
+def _specialisation_path_failure_ids(result: AuditResult) -> set[str]:
+    public_ids: set[str] = set()
+    for specialisation in result.specialisation_results:
+        for failure_id in specialisation.failed_requirements:
+            if _map_specialisation_failure(failure_id) is not None:
+                continue
+            mapped_id = map_requirement_id(failure_id)
+            if mapped_id.startswith("SPECIALISATION_"):
+                continue
+            public_ids.add(mapped_id)
+    return public_ids
+
+
 def _contract_warnings(
     config: DegreeAuditConfig,
     result: AuditResult,
@@ -372,8 +423,132 @@ def _contract_warnings(
         if row["status"] != "FAIL":
             continue
         warnings.extend(_normalized_requirement_warnings(row))
+    warnings.extend(_specialisation_contract_warnings(result, constraints, courses))
     warnings.extend(_manual_override_warnings(config, result, courses))
     return sorted(dict.fromkeys(warnings))
+
+
+def _specialisation_contract_warnings(
+    result: AuditResult,
+    constraints: list[dict[str, Any]],
+    courses: list[CourseAttempt],
+) -> list[str]:
+    warnings: list[str] = []
+    specialisations = {item.specialisation_id: item for item in result.specialisation_results}
+    if "AE" in specialisations:
+        ae = specialisations["AE"]
+        if ae.overlap_units == 4:
+            warnings.append("AE overlap budget: 4 / 8 units used")
+        if ae.overlap_units == 0 and _has_residual_ue_overlap_shape(result, "AE"):
+            warnings.append("AE overlap budget: 0 / 8 units used (UE residual is not overlap)")
+        ae_sep_units = _sep_units_for_public_specialisation(result, courses, "AE")
+        if ae_sep_units == 8:
+            warnings.append("AE SEP mapped units: 8 / 8 (at limit)")
+        if ae_sep_units > 8:
+            warnings.append(f"AE SEP mapped units: {ae_sep_units} / 8 (exceeds cap)")
+
+    if "RBT" in specialisations:
+        rbt = specialisations["RBT"]
+        if rbt.status == "PASS" and rbt.selected_path_id == "RBT_COURSEWORK_ONLY":
+            warnings.append("Robotics path selected: COURSEWORK_ONLY (20/20 units)")
+        if rbt.status == "PASS" and rbt.selected_path_id == "RBT_WITH_CAPSTONE":
+            warnings.append("Robotics path selected: WITH_CAPSTONE (12 basket units + robotics capstone)")
+        failed = {map_requirement_id(item) for item in rbt.failed_requirements}
+        if {"RBT_PATH1_CAPSTONE", "RBT_PATH2_COURSEWORK"} <= failed:
+            warnings.append("Robotics capstone present but not tagged 'robotics'; Path 1 not satisfied")
+            warnings.append("Robotics basket only 12/20 units; Path 2 not satisfied")
+        rbt_capstone_lock = any("Capstone lock active" in message for message in rbt.messages)
+        if any(row["id"] == "CAP_LOCK" and row["status"] == "FAIL" for row in constraints) and rbt_capstone_lock:
+            warnings.append("Robotics overlap budget 8/8 consumed by capstone; no further double-count permitted")
+
+    if "SPT" in specialisations:
+        spt = specialisations["SPT"]
+        if spt.status == "PASS" and _has_capstone_allocation(result, {"SPT_CORE", "SPT_SATELLITE_CAPSTONE"}):
+            warnings.append("SPT SEP mapped units: 0 (capstone used)")
+        if any("SPT_SEP_FORBIDDEN_WITH_CAPSTONE" in item for item in spt.failed_requirements):
+            rejected = _sep_course_for_specialisation(result, courses, "SPT") or "SEP course"
+            warnings.append(f"Capstone used for SPT; no SEP courses may be mapped to SPT ({rejected} rejected)")
+
+    if "MQM" in specialisations:
+        mqm = specialisations["MQM"]
+        if mqm.status == "PASS" and mqm.overlap_units == 4:
+            warnings.append("MQM overlap budget: 4 / 8 units used (EE2027 double-counted with Major)")
+        failed = set(mqm.failed_requirements)
+        if "MQM_GLOBAL_POLICY" in failed:
+            warnings.append("MQM overlap budget exceeded: 12 / 8 units")
+        if "MQM_CAPSTONE_LOCK" in failed:
+            warnings.append("Capstone double-counted to MQM; no further double-count allowed (EE2027 overlap invalid)")
+
+    if any(row["id"] == "SEP_SPEC_NO_REUSE" and row["status"] == "FAIL" for row in constraints):
+        warnings.append("SEP course EE4409 mapped to more than one Specialisation (Robotics, IoT)")
+    return warnings
+
+
+def _has_residual_ue_overlap_shape(result: AuditResult, specialisation_id: str) -> bool:
+    specialisation_allocations = {
+        allocation.course_code
+        for allocation in result.allocations
+        if _allocation_belongs_to_public_specialisation(allocation.requirement_id, specialisation_id)
+    }
+    residual_courses = {
+        allocation.course_code
+        for allocation in result.allocations
+        if map_requirement_id(allocation.requirement_id) == "UE_40"
+        and allocation.allocation_role.value == "residual_ue"
+    }
+    return bool(specialisation_allocations & residual_courses)
+
+
+def _allocation_belongs_to_public_specialisation(requirement_id: str, specialisation_id: str) -> bool:
+    mapped_id = map_requirement_id(requirement_id)
+    prefixes = {
+        "AE": ("AE_",),
+        "RBT": ("RBT_",),
+        "SPT": ("SPT_",),
+        "MQM": ("MQM_",),
+        "IOT": ("IOT_",),
+        "SET": ("SET_",),
+        "IND4": ("IND4_",),
+    }
+    return mapped_id.startswith(prefixes.get(specialisation_id, (f"{specialisation_id}_",)))
+
+
+def _sep_units_for_public_specialisation(
+    result: AuditResult,
+    courses: list[CourseAttempt],
+    specialisation_id: str,
+) -> int:
+    course_by_code = {course.course_code: course for course in courses}
+    units_by_course: dict[str, int] = {}
+    for allocation in result.allocations:
+        if not _allocation_belongs_to_public_specialisation(allocation.requirement_id, specialisation_id):
+            continue
+        course = course_by_code.get(allocation.course_code)
+        if course is not None and getattr(course.source, "value", str(course.source)) == "SEP":
+            units_by_course[course.course_code] = max(units_by_course.get(course.course_code, 0), allocation.units)
+    return sum(units_by_course.values())
+
+
+def _sep_course_for_specialisation(
+    result: AuditResult,
+    courses: list[CourseAttempt],
+    specialisation_id: str,
+) -> str | None:
+    course_by_code = {course.course_code: course for course in courses}
+    for allocation in result.allocations:
+        if not _allocation_belongs_to_public_specialisation(allocation.requirement_id, specialisation_id):
+            continue
+        course = course_by_code.get(allocation.course_code)
+        if course is not None and getattr(course.source, "value", str(course.source)) == "SEP":
+            return course.course_code
+    return None
+
+
+def _has_capstone_allocation(result: AuditResult, requirement_ids: set[str]) -> bool:
+    return any(
+        allocation.course_code in {"EE4002D", "EE4002R"} and allocation.requirement_id in requirement_ids
+        for allocation in result.allocations
+    )
 
 
 def _normalized_constraint_warnings(row: dict[str, Any]) -> list[str]:
